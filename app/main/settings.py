@@ -13,8 +13,6 @@ import environ
 from django.core.management.utils import get_random_secret_key
 from django.utils.translation import gettext_lazy as _
 
-from main.version import get_version
-
 env = environ.FileAwareEnv(
     # Set casting, default values for env's
     DEBUG=(bool, False),
@@ -43,7 +41,6 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'drf_spectacular',
     'corsheaders',
     'main',
     'settings',
@@ -125,24 +122,7 @@ DATABASES = {
 # https://www.django-rest-framework.org
 
 REST_FRAMEWORK: dict[str, object]
-if DEBUG:
-    REST_FRAMEWORK = {
-        'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
-    }
-
-    SPECTACULAR_SETTINGS = {
-        'TITLE': 'Deidentification API',
-        'DESCRIPTION': 'API for file-based deidentification',
-        'VERSION': get_version(),
-        'SERVE_INCLUDE_SCHEMA': False,
-        'TAGS': [
-            {'name': 'API', 'description': 'base endpoints and documentation'},
-            {'name': 'Jobs', 'description': 'general deidentification job management endpoints'},
-            {'name': 'Processing', 'description': 'endpoints related to job deidentification processing'},
-            {'name': 'Cancel', 'description': 'endpoints related to job cancellation'},
-        ],
-    }
-else:
+if not DEBUG:
     REST_FRAMEWORK = {'DEFAULT_RENDERER_CLASSES': ['rest_framework.renderers.JSONRenderer']}
 
 

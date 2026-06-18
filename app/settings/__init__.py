@@ -3,8 +3,8 @@
 # This program is distributed under the terms of the GNU General Public License: GPL-3.0-or-later  #
 # ------------------------------------------------------------------------------------------------ #
 
-"""Settings package for Django backend.
+"""Settings package for Django API-gateway.
 
-This package contains the persistent config values for the Django backend.
+This package contains the persistent config values for the Django API-gateway.
 The config values are designed to be used with the Django API framework.
 """
