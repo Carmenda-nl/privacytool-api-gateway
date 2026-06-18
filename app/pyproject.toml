@@ -1,0 +1,7 @@
+[project]
+name = "privacytool-api-gateway"
+version = "0.1.0"
+description = "API-gateway to handle multiple pseudonymize engines"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = []
