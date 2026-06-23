@@ -17,6 +17,7 @@ env = environ.FileAwareEnv(
     # Set casting, default values for env's
     DEBUG=(bool, False),
     LOG_LEVEL=(str, 'INFO'),
+    ENGINE_URL=(str, 'http://127.0.0.1:8001'),
 )
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'
@@ -31,6 +32,8 @@ SECRET_KEY = env('SECRET_KEY', default=get_random_secret_key())
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=['http://127.0.0.1'])
+
+ENGINE_URL = env('ENGINE_URL')
 
 
 INSTALLED_APPS = [
