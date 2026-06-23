@@ -193,8 +193,9 @@ class JobSerializer(serializers.ModelSerializer):
         """Return the job including files metadata, as size & built dates."""
         representation = super().to_representation(instance)
 
-        if representation.get('processed_preview'):
-            metrics = representation['processed_preview']['metrics']
+        processed = representation.get('processed_preview')
+        if processed:
+            metrics = processed.get('metrics', {})
             hours, minutes, seconds = metrics.get('hours', 0), metrics.get('minutes', 0), metrics.get('seconds', 0)
 
             parts = []
@@ -208,10 +209,13 @@ class JobSerializer(serializers.ModelSerializer):
 
             and_str = _('and')
 
-            representation['processed_preview']['metrics'] = {
-                'total_rows': metrics.get('total_rows'),
-                'total_time': f'{", ".join(parts[:-1])} {and_str} {parts[-1]}' if len(parts) > 1 else parts[0],
-                'time_per_row': f'{metrics.get("time_per_row_ms", 0):.3f} ms',
+            representation['processed_preview'] = {
+                **processed,
+                'metrics': {
+                    'total_rows': metrics.get('total_rows'),
+                    'total_time': f'{", ".join(parts[:-1])} {and_str} {parts[-1]}' if len(parts) > 1 else parts[0],
+                    'time_per_row': f'{metrics.get("time_per_row", 0):.3f} ms',
+                },
             }
 
         file_fields = [file.name for file in instance._meta.get_fields() if isinstance(file, FileField)]
