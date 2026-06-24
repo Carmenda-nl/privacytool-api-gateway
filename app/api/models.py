@@ -5,6 +5,8 @@
 
 """API models for keeping track of the deidentification process."""
 
+from __future__ import annotations
+
 import uuid
 from pathlib import Path
 
@@ -16,7 +18,7 @@ from main.storage import OverwriteStorage
 overwrite_storage = OverwriteStorage()
 
 
-def filepath(instance: 'DeidentificationJob', filename: str) -> str:
+def filepath(instance: DeidentificationJob, filename: str) -> str:
     """Keep filename, but store it under a UUID folder."""
     safe_name = get_valid_filename(Path(filename).name)
     job_id = getattr(instance, 'job_id', None)
@@ -24,13 +26,13 @@ def filepath(instance: 'DeidentificationJob', filename: str) -> str:
     return str(Path(job_part) / safe_name)
 
 
-def input_path(instance: 'DeidentificationJob', filename: str) -> str:
+def input_path(instance: DeidentificationJob, filename: str) -> str:
     """Generate the input file path."""
     base_path = filepath(instance, filename)
     return str(Path('input') / base_path)
 
 
-def output_path(instance: 'DeidentificationJob', filename: str) -> str:
+def output_path(instance: DeidentificationJob, filename: str) -> str:
     """Generate the output file path."""
     base_path = filepath(instance, filename)
     return str(Path('output') / base_path)
