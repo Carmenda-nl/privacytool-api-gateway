@@ -14,6 +14,7 @@ will NOT use this.
 
 from __future__ import annotations
 
+import logging
 import threading
 from contextlib import contextmanager
 from typing import TYPE_CHECKING
@@ -21,9 +22,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Generator
 
-from .logger import setup_logging
-
-logger = setup_logging()
+logger = logging.getLogger('deidentify')
 
 
 class JobControl:

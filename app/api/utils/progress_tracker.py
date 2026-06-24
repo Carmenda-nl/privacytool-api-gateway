@@ -12,6 +12,7 @@ progress during data transformation using Rich library.
 from __future__ import annotations
 
 import io
+import logging
 import sys
 import time
 from datetime import timedelta
@@ -29,9 +30,7 @@ from rich.progress import (
     TimeRemainingColumn,
 )
 
-from .logger import setup_logging
-
-logger = setup_logging()
+logger = logging.getLogger('deidentify')
 
 
 class ProgressTracker:

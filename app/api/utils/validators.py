@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING, TypedDict
@@ -20,9 +21,8 @@ from rest_framework import serializers
 
 from api.utils.csv_handler import detect_csv_properties, strip_bom
 from api.utils.file_handling import get_file_path
-from api.utils.logger import setup_logging
 
-logger = setup_logging()
+logger = logging.getLogger('deidentify')
 
 
 def validate_required_columns(columns: list[str], input_cols: str) -> None:
