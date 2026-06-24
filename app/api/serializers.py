@@ -23,9 +23,7 @@ from rest_framework import serializers
 
 from api.models import DeidentificationJob, output_path
 from api.utils.file_handling import get_metadata
-from api.utils.logger import stage_label
 from api.utils.validators import validate_file, validate_file_columns, validate_input_cols, validate_required_columns
-from core.utils.progress_tracker import tracker
 from settings.models import ConfigValues
 
 
@@ -234,23 +232,8 @@ class JobStatusSerializer(serializers.ModelSerializer):
         fields: ClassVar = ['job_id', 'status', 'progress', 'error_message']
         read_only_fields: ClassVar = ['job_id', 'status', 'progress', 'error_message']
 
-    def get_status(self, obj: DeidentificationJob) -> str:
-        """Get the stage information."""
-        if obj.status == 'processing':
-            return stage_label(tracker.get_progress(), obj.status)
-
-        return _(obj.status)
-
     def get_progress(self, obj: DeidentificationJob) -> int:
-        """Get the current progress percentage from the tracker."""
-        if obj.status == 'processing':
-            progress_info = tracker.get_progress()
-            percentage = progress_info['percentage']
-
-            if percentage is None:
-                return 0
-            return int(percentage) if isinstance(percentage, str) else percentage
-
+        """Coarse progress from the DB status; the live percentage comes from the engine."""
         return 100 if obj.status == 'completed' else 0
 
 
