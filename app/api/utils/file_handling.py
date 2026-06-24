@@ -26,8 +26,8 @@ from django.conf import settings
 from django.utils.translation import gettext as _
 # from fastexcel import read_excel
 
-from core.utils.csv_handler import detect_csv_properties, strip_bom
-from core.utils.logger import setup_logging
+from api.utils.csv_handler import detect_csv_properties, strip_bom
+from api.utils.logger import setup_logging
 
 logger = setup_logging()
 
