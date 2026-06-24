@@ -3,12 +3,13 @@
 # This program is distributed under the terms of the GNU General Public License: GPL-3.0-or-later  #
 # ------------------------------------------------------------------------------------------------ #
 
-"""File utilities for processing deidentification jobs API."""
+"""File utilities for handling job uploads in the API gateway."""
 
 from __future__ import annotations
 
 import csv
 import html
+import logging
 import os
 import tempfile
 import zipfile
@@ -16,20 +17,19 @@ from collections import deque
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import polars as pl
+from django.conf import settings
+from django.utils.translation import gettext as _
+from fastexcel import read_excel
+
+from api.utils.csv_handler import detect_csv_properties, strip_bom
+
 if TYPE_CHECKING:
     from django.core.files.uploadedfile import UploadedFile
 
     from api.models import DeidentificationJob
 
-# import polars as pl
-from django.conf import settings
-from django.utils.translation import gettext as _
-# from fastexcel import read_excel
-
-from api.utils.csv_handler import detect_csv_properties, strip_bom
-from api.utils.logger import setup_logging
-
-logger = setup_logging()
+logger = logging.getLogger('gateway')
 
 MAX_FIRST_PREVIEW_ROWS = 3
 MAX_LAST_PREVIEW_ROWS = 3
@@ -45,27 +45,6 @@ def get_file_path(uploaded_file: UploadedFile) -> tuple[str, bool]:
             temp_file.write(chunk)
 
         return temp_file.name, True
-
-
-def match_output_cols(input_cols: str) -> str:
-    """Transform the to be deidentified input columns to the corresponding output mappings."""
-    colums = [col.strip() for col in input_cols.split(',')]
-    output_cols = []
-
-    for col in colums:
-        if col.startswith('clientname='):
-            output_cols.append('clientcode')
-        elif col.startswith('report='):
-            output_cols.append('processed_report_1')
-        elif col.split('=', 1)[0].strip().startswith('report_'):
-            suffix = col.split('=', 1)[0].strip()[len('report_') :]
-            output_cols.append(f'processed_report_{suffix}')
-        elif '=' in col:
-            # Keep other columns unchanged (extract the column name after '=')
-            column_name = col.split('=', 1)[1].strip()
-            output_cols.append(column_name)
-
-    return ', '.join(output_cols)
 
 
 def _csv_preview(file_path: str) -> list[dict]:
