@@ -3,7 +3,7 @@
 # This program is distributed under the terms of the GNU General Public License: GPL-3.0-or-later  #
 # ------------------------------------------------------------------------------------------------ #
 
-"""Serializers for API endpoints handling deidentification jobs."""
+"""Serializers for API-Gateway endpoints."""
 
 from __future__ import annotations
 
@@ -188,7 +188,7 @@ class JobSerializer(serializers.ModelSerializer):
         return attrs
 
     def to_representation(self, instance: DeidentificationJob) -> dict:
-        """Return the job including files metadata, as size & built dates."""
+        """Return data including files metadata, as size & built dates."""
         representation = super().to_representation(instance)
 
         processed = representation.get('processed_preview')

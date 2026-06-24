@@ -5,7 +5,7 @@
 
 """API views package.
 
-This package contains the API views for the Django backend.
+This package contains the API views for the Django API-Gateway.
 """
 
 from api.views.jobs_views import DeidentificationJobViewSet

@@ -5,5 +5,5 @@
 
 """API Utilities package.
 
-This package provides utility and helper functions for the pseudonymizing API.
+This package provides utility and helper functions for the API-Gateway.
 """
