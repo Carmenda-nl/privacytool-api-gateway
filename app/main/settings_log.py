@@ -58,9 +58,17 @@ LOGGING = {
             'formatter': 'console',
             'filters': ['ignore_favicon'],
         },
+        'debug_file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': str(logs_dir / 'debug.log'),
+            'mode': 'w',
+            'encoding': 'utf-8',
+            'formatter': 'verbose',
+        },
     },
     'root': {
-        'handlers': ['console'],
+        'handlers': ['console', 'debug_file'],
         'level': LOG_LEVEL,
     },
     'loggers': {
