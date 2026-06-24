@@ -94,20 +94,5 @@ LOGGING = {
             'level': 'ERROR',
             'propagate': False,
         },
-        'api': {
-            'handlers': ['console'],
-            'level': LOG_LEVEL,
-            'propagate': False,
-        },
-        'main': {
-            'handlers': ['console'],
-            'level': LOG_LEVEL,
-            'propagate': False,
-        },
-        'utils': {
-            'handlers': ['console'],
-            'level': LOG_LEVEL,
-            'propagate': False,
-        },
     },
 }

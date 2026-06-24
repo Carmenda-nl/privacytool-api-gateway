@@ -6,7 +6,7 @@
 msgid ""
 msgstr ""
 
-"Project-Id-Version: v2.0.0\n"
+"Project-Id-Version: v1.0.0\n"
 "Report-Msgid-Bugs-To: django.heimgartner@radboudumc.nl\n"
 "POT-Creation-Date: 2026-04-16 15:46+0200\n"
 "PO-Revision-Date: 2026-04-02 11:51+0200\n"
@@ -18,38 +18,37 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: .\api\serializers.py:211 .\api\views\jobs_views.py:229
-#: .\api\views\jobs_views.py:247 .\api\views\jobs_views.py:361
+#: .\api\utils\logger.py:55
 #, python-format
 msgid "processed %(processed)s/%(total)s rows"
 msgstr "%(processed)s/%(total)s regels verwerkt"
 
-#: .\api\serializers.py
+#: .\api\serializers.py:204
 #, python-format
 msgid "%(count)d hour"
 msgid_plural "%(count)d hours"
 msgstr[0] "%(count)d uur"
 msgstr[1] "%(count)d uur"
 
-#: .\api\serializers.py
+#: .\api\serializers.py:206
 #, python-format
 msgid "%(count)d minute"
 msgid_plural "%(count)d minutes"
 msgstr[0] "%(count)d minuut"
 msgstr[1] "%(count)d minuten"
 
-#: .\api\serializers.py
+#: .\api\serializers.py:208
 #, python-format
 msgid "%(count)d second"
 msgid_plural "%(count)d seconds"
 msgstr[0] "%(count)d seconde"
 msgstr[1] "%(count)d seconden"
 
-#: .\api\services\job_runner.py:55
+#: .\api\serializers.py:210
 msgid "and"
 msgstr "en"
 
-#: .\api\utils\file_handling.py:162
+#: .\api\utils\file_handling.py:176
 #, python-brace-format
 msgid "Yes, Carmenda may contact me with questions about improving the Privacytool.\nConfirmed during pseudonimisation of the file: {filename}"
 msgstr "Ja, Carmenda mag mij benaderen met vragen over het verbeteren van de Privacytool.\nBevestigd tijdens de pseudonimisering van het bestand: {filename}"
@@ -101,8 +100,8 @@ msgstr "Invoerkolommen moeten een tekstreeks zijn"
 msgid "Field '%(field)s' does not follow the format 'key=value'"
 msgstr "Veld '%(field)s' volgt niet het formaat 'sleutel=waarde'"
 
-#: .\api\utils\validators.py:214
-msgid "The 'report' key must be present (report=value)"
+#: .\api\utils\validators.py:215
+msgid "A 'report' key must be present (report=value)"
 msgstr "De sleutel 'report' moet aanwezig zijn (report=waarde)"
 
 #: .\main\middleware.py:66
@@ -115,14 +114,14 @@ msgstr "Kan het bestand niet openen: {path}"
 msgid "File {path} not found."
 msgstr "Bestand {path} niet gevonden."
 
-#: .\main\settings.py:173
+#: .\main\settings.py:154
 msgid "English"
 msgstr "Engels"
 
-#: .\main\settings.py:174
+#: .\main\settings.py:155
 msgid "Dutch"
 msgstr "Nederlands"
 
-#: .\api\views\sse_views.py
+#: .\api\views\sse_views.py:84 .\api\views\sse_views.py:87
 msgid "processing"
 msgstr "verwerking"
