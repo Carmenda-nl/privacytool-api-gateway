@@ -13,6 +13,8 @@ from typing import TYPE_CHECKING
 
 from django.conf import settings
 
+from preprocessing.csv_handler import load_csv
+
 if TYPE_CHECKING:
     from django.core.files.uploadedfile import UploadedFile
 
@@ -29,6 +31,31 @@ def get_file_path(uploaded_file: UploadedFile) -> tuple[str, bool]:
             temp_file.write(chunk)
 
         return temp_file.name, True
+
+
+def sanitize_uploaded_files(job: DeidentificationJob, file_metadata: dict) -> None:
+    """Convert uploaded CSV input/datakey.
+
+    Reuses the encoding/delimiter/header detected during validation
+    (`file_metadata` from the serializer) so the file is read once.
+    """
+    output_folder = str(Path(settings.MEDIA_ROOT) / 'output')
+
+    for field_name in ('input_file', 'datakey'):
+        metadata = file_metadata.get(field_name)
+        if not metadata or metadata.get('file_type') != 'csv':
+            continue
+
+        field = getattr(job, field_name, None)
+        if not field:
+            continue
+
+        properties = {
+            'header': metadata['header'],
+            'encoding': metadata['encoding'],
+            'delimiter': metadata['delimiter'],
+        }
+        load_csv(Path(field.path), output_folder, properties)
 
 
 def get_metadata(represent: dict, instance: DeidentificationJob, fields: list[str]) -> dict:

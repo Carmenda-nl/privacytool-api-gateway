@@ -53,6 +53,7 @@ class FileValidationResult(TypedDict, total=False):
     file_type: str
     encoding: str
     delimiter: str
+    header: str
 
 
 def _validate_csv(file_path: str, datakey: str) -> FileValidationResult:
@@ -95,6 +96,7 @@ def _validate_csv(file_path: str, datakey: str) -> FileValidationResult:
         'file_type': 'csv',
         'encoding': encoding,
         'delimiter': delimiter,
+        'header': header,
     }
 
 

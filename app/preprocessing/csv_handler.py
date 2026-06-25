@@ -208,9 +208,10 @@ def _normalize_csv(file_path: Path, properties: dict[str, str]) -> str:
     return csv_temp.name
 
 
-def load_csv(file_path: Path, output_folder: str) -> None:
+def load_csv(file_path: Path, output_folder: str, properties: dict[str, str] | None = None) -> None:
     """Sanitize and normalize a CSV file in place (UTF-8, comma-delimited, no empty rows)."""
-    properties = detect_csv_properties(file_path)
+    if properties is None:
+        properties = detect_csv_properties(file_path)
 
     sanitized_csv = _sanitize_csv(file_path, properties, output_folder)
     normalized_csv = _normalize_csv(Path(sanitized_csv), properties)

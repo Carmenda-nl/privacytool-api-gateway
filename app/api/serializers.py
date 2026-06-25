@@ -128,11 +128,13 @@ class JobSerializer(serializers.ModelSerializer):
         if not hasattr(self, '_file_metadata'):
             self._file_metadata = {}
 
-        metadata: dict = {'uploaded_file': value, 'file_type': result['file_type']}
+        metadata: dict = {'file_type': result['file_type']}
         if result.get('encoding'):
             metadata['encoding'] = result['encoding']
         if result.get('delimiter'):
             metadata['delimiter'] = result['delimiter']
+        if result.get('header'):
+            metadata['header'] = result['header']
 
         self._file_metadata['input_file'] = metadata
 
@@ -167,6 +169,8 @@ class JobSerializer(serializers.ModelSerializer):
                 metadata['encoding'] = result['encoding']
             if result.get('delimiter'):
                 metadata['delimiter'] = result['delimiter']
+            if result.get('header'):
+                metadata['header'] = result['header']
 
             self._file_metadata['datakey'] = metadata
 
