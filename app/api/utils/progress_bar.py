@@ -43,6 +43,7 @@ class ProgressBar:
         self.rows_progress = 0
         self.rows_processed: int | None = None
         self.rows_total: int | None = None
+        self.stage: str | None = None
 
     def _progress_bar(self) -> Progress:
         """Build the Rich progress bar: spinner, description, bar, %, M/N and timings."""
@@ -55,6 +56,18 @@ class ProgressBar:
         time_remaining = TimeRemainingColumn()
 
         return Progress(spinner, text, bar, task_progress, mofn, time_elapsed, time_remaining)
+
+    def complete(self) -> None:
+        """Snap the active bar to 100% so it visibly finishes instead of freezing."""
+        if self.rich_progress is None or self.task_id is None or self.rows_total is None:
+            return
+
+        self.rows_progress = 100
+        self.rich_progress.update(
+            self.task_id,
+            completed=self.rows_total,
+            description=f'{self.stage or "processing"} (100%)',
+        )
 
     def clean_progress_bar(self) -> None:
         """Stop the live bar and clear it, so the next job lazily builds a fresh one."""
@@ -73,6 +86,7 @@ class ProgressBar:
 
         self.rows_processed = processed
         self.rows_total = total
+        self.stage = stage
 
         progress_percentage = max(self.rows_progress, min(int(progress), 100))
 
