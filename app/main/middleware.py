@@ -61,7 +61,7 @@ class ServeMediaFilesMiddleware:
                     if 'download' in request.GET:
                         response['Content-Disposition'] = f'attachment; filename="{file_path.name}"'
 
-                except (OSError, PermissionError):
+                except OSError, PermissionError:
                     # File can not be opened
                     return HttpResponseNotFound(_('Can not open the file: {path}').format(path=relative_path))
                 else:
