@@ -117,12 +117,13 @@ class JobSerializer(serializers.ModelSerializer):
             if input_file is not in the request data (partial update)
         """
         if isinstance(value, str):
+            # Only validate new files
             return value
 
         if 'input_file' not in self.initial_data:
             return value
 
-        result = validate_file(value, input_cols=None)
+        result = validate_file(value)
 
         if not hasattr(self, '_file_metadata'):
             self._file_metadata = {}

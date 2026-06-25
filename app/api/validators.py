@@ -55,7 +55,7 @@ class FileValidationResult(TypedDict, total=False):
     delimiter: str
 
 
-def _validate_csv(file_path: str, input_cols: str | None, datakey: str) -> FileValidationResult:
+def _validate_csv(file_path: str, datakey: str) -> FileValidationResult:
     """Validate a CSV file: structure, columns and metadata."""
     properties = detect_csv_properties(Path(file_path))
     encoding, delimiter = properties['encoding'], properties['delimiter']
@@ -88,8 +88,6 @@ def _validate_csv(file_path: str, input_cols: str | None, datakey: str) -> FileV
     if not datakey and columns[:3] == ['Clientnaam', 'Synoniemen', 'Code']:
         message = _('This appears to be a datakey file (columns: Clientnaam, Synoniemen, Code)')
         raise serializers.ValidationError(message)
-    if input_cols and not datakey:
-        validate_required_columns(columns, input_cols)
     if datakey:
         _validate_datakey_columns(columns)
 
@@ -100,7 +98,7 @@ def _validate_csv(file_path: str, input_cols: str | None, datakey: str) -> FileV
     }
 
 
-def _validate_excel(file_path: str, input_cols: str | None) -> FileValidationResult:
+def _validate_excel(file_path: str) -> FileValidationResult:
     """Validate an Excel file: structure, columns and metadata."""
     df = read_excel(file_path).load_sheet(0, n_rows=1).to_polars()
 
@@ -108,14 +106,10 @@ def _validate_excel(file_path: str, input_cols: str | None) -> FileValidationRes
         message = _('Excel file must contain at least 1 data row.')
         raise serializers.ValidationError(message)
 
-    columns = [str(col) for col in df.columns]
-    if input_cols:
-        validate_required_columns(columns, input_cols)
-
     return {'file_type': 'excel'}
 
 
-def validate_file(file: UploadedFile, input_cols: str | None = None, datakey: str = '') -> FileValidationResult:
+def validate_file(file: UploadedFile, datakey: str = '') -> FileValidationResult:
     """Validate uploaded file and return file with metadata.
 
     Checks that the file:
@@ -135,9 +129,9 @@ def validate_file(file: UploadedFile, input_cols: str | None = None, datakey: st
 
     try:
         if input_extension == '.csv':
-            result = _validate_csv(file_path, input_cols, datakey)
+            result = _validate_csv(file_path, datakey)
         elif input_extension in ('.xls', '.xlsx'):
-            result = _validate_excel(file_path, input_cols)
+            result = _validate_excel(file_path)
         else:
             message = _('Unsupported file extension.')
             raise serializers.ValidationError(message)
