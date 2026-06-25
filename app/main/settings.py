@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'main',
     'settings',
+    'preprocessing',
     'api',
 ]
 

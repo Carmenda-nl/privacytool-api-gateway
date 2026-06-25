@@ -3,24 +3,21 @@
 # This program is distributed under the terms of the GNU General Public License: GPL-3.0-or-later  #
 # ------------------------------------------------------------------------------------------------ #
 
-"""CSV file loading, conversion and sanitization utilities."""
+"""CSV file conversion and sanitization utilities."""
 
 from __future__ import annotations
 
 import csv
 import html
+import logging
 import re
 import shutil
 import tempfile
 from pathlib import Path
 
-# import polars as pl
 from charset_normalizer import from_bytes
 
-from .logger import setup_logging
-from .progress_tracker import tracker
-
-logger = setup_logging()
+logger = logging.getLogger('preprocessing')
 
 HTML_TAG = re.compile(r'</?[a-zA-Z][\w-]*(?:\s+[^>]*[=/][^>]*)?\s*/?>', re.IGNORECASE)
 
@@ -62,7 +59,7 @@ def _detect_encoding(data_sample: bytes) -> str:
         if encoding.lower() == 'ascii':
             encoding = 'utf-8'
 
-    except (LookupError, ValueError, TypeError, OSError):
+    except LookupError, ValueError, TypeError, OSError:
         logger.warning('Encoding detection failed, defaults to UTF-8 encoding.')
         encoding = 'utf-8'
 
@@ -155,12 +152,12 @@ def _sanitize_csv(file_path: Path, properties: dict[str, str], output_folder: st
 
             try:
                 text = buffer.decode(encoding)
-            except (UnicodeDecodeError, LookupError):
+            except UnicodeDecodeError, LookupError:
                 for raw_line in buffer.split(b'\n'):
                     try:
                         # handle errors line by line if the chunk contains invalid sequences
                         line = raw_line.decode(encoding)
-                    except (UnicodeDecodeError, LookupError):
+                    except UnicodeDecodeError, LookupError:
                         error_line = raw_line.decode(encoding, errors='replace')
                         error_line = error_line.replace(delimiter, ',')
                         error_temp.write(error_line + '\n')
@@ -211,20 +208,12 @@ def _normalize_csv(file_path: Path, properties: dict[str, str]) -> str:
     return csv_temp.name
 
 
-def load_csv(file_path: Path, output_folder: str) -> pl.DataFrame:
-    """Load a CSV file, sanitize and normalize it, and return as a DataFrame."""
+def load_csv(file_path: Path, output_folder: str) -> None:
+    """Sanitize and normalize a CSV file in place (UTF-8, comma-delimited, no empty rows)."""
     properties = detect_csv_properties(file_path)
 
-    tracker.set_progress('sanitize_csv')
     sanitized_csv = _sanitize_csv(file_path, properties, output_folder)
+    normalized_csv = _normalize_csv(Path(sanitized_csv), properties)
 
-    tracker.set_progress('normalize_csv')
-    input_file = _normalize_csv(Path(sanitized_csv), properties)
-
-    df = pl.read_csv(source=input_file, encoding='utf-8', separator=',')
-
-    # Cleanup temp files
     Path(sanitized_csv).unlink(missing_ok=True)
-    Path(input_file).unlink(missing_ok=True)
-
-    return df
+    shutil.move(normalized_csv, file_path)
