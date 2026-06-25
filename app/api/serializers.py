@@ -22,8 +22,13 @@ from django.utils.translation import ngettext as _ng
 from rest_framework import serializers
 
 from api.models import DeidentificationJob, output_path
-from api.utils.file_handling import get_metadata
-from api.utils.validators import validate_file, validate_file_columns, validate_input_cols, validate_required_columns
+from api.utils.uploads import get_metadata
+from api.validators import (
+    validate_file,
+    validate_file_columns,
+    validate_input_cols,
+    validate_required_columns,
+)
 from settings.models import ConfigValues
 
 

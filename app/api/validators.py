@@ -3,11 +3,10 @@
 # This program is distributed under the terms of the GNU General Public License: GPL-3.0-or-later  #
 # ------------------------------------------------------------------------------------------------ #
 
-"""Validators for checking deidentification jobs API."""
+"""Validators for the API-Gateway, validates uploaded files before a job is created."""
 
 from __future__ import annotations
 
-import logging
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING, TypedDict
@@ -19,10 +18,8 @@ from django.utils.translation import gettext as _
 from fastexcel import read_excel
 from rest_framework import serializers
 
-from api.utils.csv_handler import detect_csv_properties, strip_bom
-from api.utils.file_handling import get_file_path
-
-logger = logging.getLogger('deidentify')
+from api.utils.uploads import get_file_path
+from preprocessing.csv_handler import detect_csv_properties, strip_bom
 
 
 def validate_required_columns(columns: list[str], input_cols: str) -> None:
