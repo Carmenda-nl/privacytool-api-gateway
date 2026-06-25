@@ -18,6 +18,7 @@ env = environ.FileAwareEnv(
     DEBUG=(bool, False),
     LOG_LEVEL=(str, 'INFO'),
     ENGINE_URL=(str, 'http://127.0.0.1:8001'),
+    ENGINE_M2M_HASH=(str, ''),
 )
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'
@@ -34,6 +35,7 @@ ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=['http://127.0.0.1'])
 
 ENGINE_URL = env('ENGINE_URL')
+ENGINE_M2M_HASH = env('ENGINE_M2M_HASH')
 
 
 INSTALLED_APPS = [

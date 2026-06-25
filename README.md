@@ -139,9 +139,15 @@ LOG_LEVEL=INFO
 
 SECRET_KEY=your-secret-key-here
 CSRF_TRUSTED_ORIGINS=http://127.0.0.1
+
+ENGINE_URL=http://127.0.0.1:8001
+ENGINE_M2M_HASH=
 ```
 
 > **Note:** Replace `your-secret-key-here` with a secure random string. For production environments, ensure `DEBUG=False` and use appropriate CSRF trusted origins.
+
+> **Note:** `ENGINE_M2M_HASH` is the shared secret sent as the `X-M2M-Key` header on every engine call.
+It must match the engine's `M2M_HASH`. A mismatch makes the engine reject all jobs with `401`.
 
 ### Step 4: Run the Server
 

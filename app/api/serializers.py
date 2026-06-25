@@ -230,7 +230,6 @@ class JobStatusSerializer(serializers.ModelSerializer):
     """Provide detailed information about the current state of a job."""
 
     progress = serializers.SerializerMethodField()
-    status = serializers.SerializerMethodField()
 
     class Meta:
         model = DeidentificationJob
