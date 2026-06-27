@@ -33,7 +33,7 @@ def get_file_path(uploaded_file: UploadedFile) -> tuple[str, bool]:
         return temp_file.name, True
 
 
-def sanitize_uploaded_files(job: DeidentificationJob, file_metadata: dict) -> None:
+def sanitize_uploaded(job: DeidentificationJob, file_metadata: dict) -> None:
     """Convert uploaded CSV input/datakey.
 
     Reuses the encoding/delimiter/header detected during validation

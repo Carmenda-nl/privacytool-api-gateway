@@ -178,7 +178,11 @@ class JobSerializer(serializers.ModelSerializer):
         return None
 
     def validate(self, attrs: dict) -> dict:
-        """Cross-validate input_cols against input_file columns."""
+        """Require input_file on create and cross-validate input_cols against its columns."""
+        if self.instance is None and not attrs.get('input_file'):
+            message = _('A POST request must include an input_file. Use PUT to update an existing job.')
+            raise serializers.ValidationError({'input_file': message})
+
         input_cols = attrs.get('input_cols')
         input_file = attrs.get('input_file')
 

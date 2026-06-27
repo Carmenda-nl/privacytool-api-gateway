@@ -93,12 +93,7 @@ def detect_csv_properties(file_path: Path) -> dict[str, str]:
     delimiter = _detect_delimiter(header)
 
     logger.info('Detected %s: Encoding=%s, delimiter=%r', file_path.name, encoding, delimiter)
-
-    return {
-        'header': header,
-        'encoding': encoding,
-        'delimiter': delimiter,
-    }
+    return {'header': header, 'encoding': encoding, 'delimiter': delimiter}
 
 
 def _collect_errors(file_path: Path, error_temp: str, output_folder: str) -> None:
