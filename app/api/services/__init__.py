@@ -5,7 +5,8 @@
 
 """API service layer for deidentification job processing.
 
-This package runs deidentification jobs in a background thread (job_runner)
-so the HTTP request can return immediately. Progress is tracked via the
-progress tracker and streamed to the frontend using Server-Sent Events (SSE).
+This package forwards deidentification jobs to the engine (job_runner), which
+runs them on their job_id, so the HTTP request can return immediately. Progress
+and completion are reconciled on demand from the engine and streamed to the
+frontend using Server-Sent Events (SSE).
 """
