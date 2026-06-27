@@ -48,6 +48,8 @@ class DeidentificationJob(models.Model):
         CANCELLED = 'cancelled', 'Cancelled'
         FAILED = 'failed', 'Failed'
 
+    ACTIVE_STATUSES = frozenset({Status.PENDING, Status.PROCESSING})
+
     job_id = models.UUIDField(default=uuid.uuid1, editable=False, primary_key=True)
     input_cols = models.CharField(blank=True)
     input_file = models.FileField(upload_to=input_path, storage=overwrite_storage, max_length=255)
