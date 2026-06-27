@@ -8,11 +8,12 @@
 from __future__ import annotations
 
 import gc
+import logging
 import shutil
-import threading
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import httpx
 from django.conf import settings
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -25,22 +26,16 @@ from api.serializers import (
     JobStatusSerializer,
     ZipSerializer,
 )
-from api.services.job_runner import run_processing
-from api.utils.file_handling import (
-    collect_output_files,
-    create_zipfile,
-    generate_consent,
-    generate_preview,
-    match_output_cols,
-)
-from core.utils.logger import setup_logging
-from core.utils.progress_control import job_control
+from api.services.job_runner import reconcile_job, request_engine_cancel, start_terminal_progress, submit_job
+from api.utils.packaging import collect_output_files, create_zipfile, generate_consent
+from api.utils.previews import generate_preview
+from api.utils.uploads import sanitize_uploaded
 
 if TYPE_CHECKING:
     from django.http import HttpRequest
     from rest_framework.request import Request
 
-logger = setup_logging()
+logger = logging.getLogger('api-gateway')
 
 
 class DeidentificationJobViewSet(viewsets.ModelViewSet):
@@ -61,35 +56,25 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
         return JobSerializer
 
     def create(self, request: Request, *_args: object, **_kwargs: object) -> Response:
-        """Prepare a new job with an uploaded file and column mapping configuration."""
-        if 'input_file' not in request.FILES:
-            return Response(
-                {
-                    'error': 'input file is required',
-                    'message': 'A POST request must include an input_file. Use PUT to update an existing job.',
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
+        """Prepare a new job with an: checked, cleaned and uploaded file with column mapping configuration."""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         job = serializer.save(status='pending')
 
+        sanitize_uploaded(job, getattr(serializer, '_file_metadata', {}))
         generate_preview(job)
 
         if job.data_permission:
             generate_consent(job)
 
         detail_serializer = JobSerializer(job, context={'request': request})
-
         return Response(detail_serializer.data, status=status.HTTP_201_CREATED)
 
     def _reset_job(self, request: Request, job: DeidentificationJob, *, input_uploaded: bool) -> None:
         """Reset the job's output and related fields."""
         if job.status == 'processing':
-            job_control.cancel(str(job.job_id))
+            request_engine_cancel(str(job.job_id))
 
-        job_control.join_thread(str(job.job_id))
         gc.collect()
         job.reset_output()
 
@@ -138,6 +123,8 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
             job.datakey = new_datakey
             job.save(update_fields=['datakey'])
 
+        sanitize_uploaded(job, getattr(serializer, '_file_metadata', {}))
+
         new_permission = serializer.validated_data.get('data_permission', False)
         permission_changed = new_permission != old_permission
 
@@ -163,15 +150,13 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
             logger.info('Job "%s" Cancelling running job before deletion', instance.job_id)
 
             try:
-                job_control.cancel(str(instance.job_id))
+                request_engine_cancel(str(instance.job_id))
 
                 instance.status = 'cancelled'
                 instance.error_message = 'Job cancelled before deletion'
                 instance.save()
-            except (RuntimeError, OSError):
+            except RuntimeError, OSError:
                 logger.warning('Failed to cancel job before deletion.')
-
-        job_control.join_thread(str(instance.job_id))
 
         # Force garbage collection to release file handles
         gc.collect()
@@ -195,7 +180,7 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
             return Response({'message': 'Job not running', 'status': job.status}, status=status.HTTP_200_OK)
 
         try:
-            job_control.cancel(str(job.job_id))
+            request_engine_cancel(str(job.job_id))
             job.status = 'cancelled'
             job.error_message = 'Cancellation requested'
             job.save()
@@ -223,9 +208,12 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
             )
 
         if request.method == 'GET':
-            data = self.get_serializer(job).data
-            data['endpoint'] = request.build_absolute_uri()
-            return Response(data, status=status.HTTP_200_OK)
+            if job.status == 'processing':
+                info = reconcile_job(job)
+                if info is not None:
+                    return Response(info, status=status.HTTP_200_OK)
+
+            return Response(self.get_serializer(job).data, status=status.HTTP_200_OK)
 
         if job.status == 'processing':
             return Response(
@@ -239,32 +227,25 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
 
         try:
             input_cols = job.input_cols
-            output_cols = match_output_cols(input_cols)
             filename = Path(job.input_file.name).name
             input_file = f'{job.job_id}/{filename}'
 
-            datakey = None
-            if job.datakey:
-                datakey_name = Path(job.datakey.name).name
-                datakey = f'{job.job_id}/{datakey_name}'
+            datakey = Path(job.datakey.name).name if job.datakey else None
 
-            thread = threading.Thread(
-                target=run_processing,
-                args=(str(job.job_id), input_file, input_cols, output_cols, datakey),
-                daemon=True,
-            )
-            job_control.register_thread(str(job.job_id), thread)
-            thread.start()
+            submit_job(str(job.job_id), input_file, input_cols, datakey)
+            start_terminal_progress(str(job.job_id))
 
+            progress_url = request.build_absolute_uri(f'/api/v2/jobs/{job.job_id}/progress/')
             return Response(
                 {
-                    'message': 'Job processing started in background',
+                    'message': 'Job forwarded to engine',
                     'job_id': str(job.job_id),
                     'status': 'processing',
+                    'progress_url': progress_url,
                 },
                 status=status.HTTP_202_ACCEPTED,
             )
-        except (OSError, ValueError, KeyError) as error:
+        except (httpx.HTTPError, OSError, ValueError, KeyError) as error:
             job.error_message = f'Job error: {error}'
             job.status = 'failed'
             job.save()
