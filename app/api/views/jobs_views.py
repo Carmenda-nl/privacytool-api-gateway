@@ -26,7 +26,7 @@ from api.serializers import (
     JobStatusSerializer,
     ZipSerializer,
 )
-from api.services.job_runner import reconcile_job, request_engine_cancel, start_terminal_progress, submit_job
+from api.services.job_runner import reconcile_job, request_engine_cancel, submit_job
 from api.utils.packaging import collect_output_files, create_zipfile, generate_consent
 from api.utils.previews import generate_preview
 from api.utils.uploads import sanitize_uploaded
@@ -233,8 +233,6 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
             datakey = Path(job.datakey.name).name if job.datakey else None
 
             submit_job(str(job.job_id), input_file, input_cols, datakey)
-            start_terminal_progress(str(job.job_id))
-
             progress_url = request.build_absolute_uri(f'/api/v2/jobs/{job.job_id}/progress/')
             return Response(
                 {
