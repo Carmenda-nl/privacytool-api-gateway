@@ -15,5 +15,8 @@ headers {
 }
 
 docs {
-  Returns the current processing status and progress (percentage, current stage, processed rows).
+  Returns the current job status (and a coarse 0/100 progress).
+
+  For live progress (percentage, current stage, processed rows), use the SSE
+  progress stream at `GET /api/v2/jobs/{jobId}/progress/` instead.
 }
