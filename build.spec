@@ -8,22 +8,20 @@ from pathlib import Path
 from PyInstaller.utils.hooks import collect_all, collect_data_files, collect_submodules, copy_metadata
 
 sys.path.insert(0, str(Path(SPECPATH) / 'app'))
-from main.version import get_version
+from main._version import __version__
 
-print(f'\API-Gateway build: {get_version()}\n')
+print(f'\nAPI-Gateway build: {__version__}\n')
 
 # Check build OS
 windows = sys.platform == 'win32'
 site_packages = site.getsitepackages()[1] if windows else site.getsitepackages()[0]
 
 rest_framework_path = Path(site_packages) / 'rest_framework'
-drf_spectacular_path = Path(site_packages) / 'drf_spectacular'
 
 # Update paths to match current project structure
 app_path = Path(SPECPATH) / 'app'
 
 datas = []
-datas += copy_metadata('drf-spectacular')
 datas += copy_metadata('polars')
 
 # Ensure daphne/autobahn (and their native extensions) are collected by PyInstaller
@@ -32,7 +30,6 @@ datas += copy_metadata('autobahn')
 datas += copy_metadata('twisted')
 
 datas += collect_data_files('rest_framework')
-datas += collect_data_files('drf_spectacular')
 datas += collect_data_files('polars')
 datas += collect_data_files('daphne')
 datas += collect_data_files('autobahn')
@@ -48,7 +45,7 @@ excluded_items = {
     'tests',
     'pytest',
     'core.py',
-    'Makefile'
+    'Makefile',
     'pyproject.toml',
 }
 
@@ -75,10 +72,8 @@ datas = [
 ]
 
 rest_framework_imports = collect_submodules('rest_framework')
-drf_spectacular_imports = collect_submodules('drf_spectacular')
 
 datas.append((str(rest_framework_path), 'rest_framework'))
-datas.append((str(drf_spectacular_path), 'drf_spectacular'))
 
 binaries = []
 hiddenimports = []
@@ -89,8 +84,6 @@ hiddenimports += collect_submodules('twisted')
 
 tmp_ret = collect_all('rest_framework')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
-tmp_ret = collect_all('drf_spectacular')
-datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 tmp_ret = collect_all('polars')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 tmp_ret = collect_all('daphne')
@@ -99,6 +92,20 @@ tmp_ret = collect_all('autobahn')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 tmp_ret = collect_all('twisted')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+
+
+# Drop test suites dragged in by collect_submodules/collect_all
+def _has_test_segment(path, sep):
+    parts = path.replace('\\', '/').split('/') if sep is None else path.split(sep)
+    return 'test' in parts or 'tests' in parts
+
+
+hiddenimports = [imp for imp in hiddenimports if not _has_test_segment(imp, '.')]
+datas = [
+    (source, dest)
+    for source, dest in datas
+    if not (isinstance(dest, str) and _has_test_segment(dest, None))
+]
 
 a = Analysis(
     [str(app_path / 'manage.py')],
