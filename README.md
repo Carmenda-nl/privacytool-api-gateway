@@ -17,6 +17,7 @@ decoupling the API layer from the underlying pseudonymization logic.
 ## Features
 
 - **REST API**: HTTP endpoints for submitting and managing pseudonymization requests
+- **CSV Sanitization**: Uploaded CSV files are sanitized and normalized (encoding, HTML stripping, quote handling) before being routed to the engine
 - **Asynchronous Processing**: Job-based processing with real-time progress tracking via Server-Sent Events (SSE)
 - **Job Management**: Cancel running jobs and track processing status through the API
 - **API Documentation**: Automatic OpenAPI/Swagger documentation for easy integration
