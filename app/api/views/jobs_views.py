@@ -26,7 +26,7 @@ from api.serializers import (
     JobStatusSerializer,
     ZipSerializer,
 )
-from api.services.job_runner import reconcile_job, request_engine_cancel, submit_job
+from api.services.job_runner import cancel_engine, submit_job, sync_status
 from api.utils.packaging import collect_output_files, create_zipfile, generate_consent
 from api.utils.previews import generate_preview
 from api.utils.uploads import sanitize_uploaded
@@ -73,7 +73,7 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
     def _reset_job(self, request: Request, job: DeidentificationJob, *, input_uploaded: bool) -> None:
         """Reset the job's output and related fields."""
         if job.status == 'processing':
-            request_engine_cancel(str(job.job_id))
+            cancel_engine(str(job.job_id))
 
         gc.collect()
         job.reset_output()
@@ -150,7 +150,7 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
             logger.info('Job "%s" Cancelling running job before deletion', instance.job_id)
 
             try:
-                request_engine_cancel(str(instance.job_id))
+                cancel_engine(str(instance.job_id))
 
                 instance.status = 'cancelled'
                 instance.error_message = 'Job cancelled before deletion'
@@ -180,7 +180,7 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
             return Response({'message': 'Job not running', 'status': job.status}, status=status.HTTP_200_OK)
 
         try:
-            request_engine_cancel(str(job.job_id))
+            cancel_engine(str(job.job_id))
             job.status = 'cancelled'
             job.error_message = 'Cancellation requested'
             job.save()
@@ -209,7 +209,7 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
 
         if request.method == 'GET':
             if job.status == 'processing':
-                info = reconcile_job(job)
+                info = sync_status(job)
                 if info is not None:
                     return Response(info, status=status.HTTP_200_OK)
 

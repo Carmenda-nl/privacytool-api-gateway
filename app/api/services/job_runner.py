@@ -3,147 +3,141 @@
 # This program is distributed under the terms of the GNU General Public License: GPL-3.0-or-later  #
 # ------------------------------------------------------------------------------------------------ #
 
-"""Background job runner for deidentification jobs.
-
-Delegates the actual pseudonymization to the engine over HTTP. The input file is
-not uploaded: the engine reads it directly from the shared MEDIA_ROOT path and
-writes its output back into the job's output directory.
-
-Responsible for:
-    - Submitting the job to the engine and polling its progress.
-    - Updating job status in the database on completion, cancellation, or error.
-"""
+"""Engine job submission and reconciliation for deidentification jobs."""
 
 from __future__ import annotations
 
-import contextlib
 import logging
-import time
+import shutil
 from pathlib import Path
 
 import httpx
 from django.conf import settings
 
 from api.models import DeidentificationJob
-from api.utils.logger import setup_job_logging
-from core.utils.logger import setup_logging
-from core.utils.progress_control import JobCancelledError, job_control
-from core.utils.progress_tracker import tracker
 
-logger = setup_logging()
-
-_POLL_INTERVAL = 2
+logger = logging.getLogger('api-gateway')
 
 
-def _handle_process_completion(current_job: DeidentificationJob, preview: list | None, file: str) -> None:
-    """Save preview, link the engine's output files, and mark the job as completed."""
-    current_job.processed_preview = preview
-    current_job.save(update_fields=['processed_preview'])
+def engine_header() -> dict[str, str]:
+    """Auth header for engine calls: the shared M2M secret."""
+    return {'X-M2M-Key': settings.ENGINE_M2M_HASH} if settings.ENGINE_M2M_HASH else {}
 
-    job_output_dir = Path(settings.MEDIA_ROOT) / 'output' / str(current_job.job_id)
-    datakey_output_name = f'{Path(file).stem}_key.csv'
+
+def submit_job(job_id: str, input_file: str, input_cols: str, datakey: str | None) -> None:
+    """Forward a job to the engine over HTTP (shared paths, no file transfer)."""
+    form: dict = {
+        'file': str(Path(settings.MEDIA_ROOT) / 'input' / input_file),
+        'cols': input_cols,
+        'job_id': job_id,
+    }
+
+    if datakey:
+        form['datakey'] = Path(datakey).name
+
+    httpx.post(f'{settings.ENGINE_URL}/api/process', data=form, headers=engine_header(), timeout=30).raise_for_status()
+    logger.debug('Job "%s" submitted to engine', job_id)
+
+
+def cancel_engine(job_id: str) -> None:
+    """Ask the engine to stop the running job."""
+    try:
+        httpx.delete(f'{settings.ENGINE_URL}/api/process', headers=engine_header(), timeout=10)
+        logger.info('Job "%s" cancellation forwarded to engine', job_id)
+    except httpx.HTTPError:
+        logger.warning('Job "%s": failed to cancel to engine', job_id)
+
+
+def _engine_get(path: str, job_id: str) -> httpx.Response | None:
+    """Engine GET endpoint, or None on any transport error."""
+    try:
+        return httpx.get(f'{settings.ENGINE_URL}{path}', params={'job_id': job_id}, headers=engine_header(), timeout=10)
+    except httpx.HTTPError as exception:
+        logger.warning('Job "%s": engine GET %s failed: %s', job_id, path, exception)
+        return None
+
+
+def _engine_progress(job_id: str) -> dict | None:
+    """Fetch the engine's live progress for a still-running job, or None on any hiccup."""
+    response = _engine_get('/api/progress', job_id)
+    if response is None or response.status_code != httpx.codes.OK:
+        return None
+
+    return response.json()
+
+
+def _apply_completion(job: DeidentificationJob, result: dict) -> None:
+    """Save preview, link the engine's output files, and mark the job completed."""
+    file = Path(getattr(job.input_file, 'name', '')).name
+
+    job.processed_preview = result
+    job.save(update_fields=['processed_preview'])
+
+    output_dir = Path(settings.MEDIA_ROOT) / 'output' / str(job.job_id)
+    input_dir = Path(settings.MEDIA_ROOT) / 'input' / str(job.job_id)
+    datakey = f'{Path(file).stem}_key.csv'
+
+    # skipped lines are produced by the gateway in the input (the engine wipes the output dir at job start)
+    skipped_lines = input_dir / f'{Path(file).stem}_skipped_lines.csv'
+    skipped_path = None
+
+    if skipped_lines.exists():
+        skipped_path = output_dir / skipped_lines.name
+        shutil.copy2(skipped_lines, skipped_path)
 
     core_files = [
-        ('output_file', job_output_dir / f'{Path(file).stem}_pseudonymised{Path(file).suffix}'),
-        ('output_datakey', job_output_dir / datakey_output_name),
-        ('skipped_lines', next(job_output_dir.glob('*_skipped_lines.csv'), None)),
+        ('output_file', output_dir / f'{Path(file).stem}_pseudonymised{Path(file).suffix}'),
+        ('output_datakey', output_dir / datakey),
+        ('skipped_lines', skipped_path),
+        ('log_file', next(output_dir.glob('*.log'), None)),
     ]
 
     save_fields = []
     for field_name, path in core_files:
         if path is not None and path.exists():
-            getattr(current_job, field_name).name = str(path.relative_to(Path(settings.MEDIA_ROOT)))
+            getattr(job, field_name).name = str(path.relative_to(Path(settings.MEDIA_ROOT)))
             save_fields.append(field_name)
     if save_fields:
-        current_job.save(update_fields=save_fields)
+        job.save(update_fields=save_fields)
 
-    current_job.status = 'completed'
-    current_job.save(update_fields=['status'])
-
-
-def _handle_process_cancellation(job_id: str) -> None:
-    """Handle processing cancellation: update database."""
-    logger.info('Processing "%s" cancelled by user', job_id)
-    cancelled_job = DeidentificationJob.objects.get(pk=job_id)
-    cancelled_job.error_message = 'Processing cancelled by user'
-    cancelled_job.status = 'cancelled'
-    cancelled_job.save()
+    if DeidentificationJob.objects.filter(pk=job.pk, status='processing').update(status='completed'):
+        job.status = 'completed'
+        logger.info('Job "%s" completed', job.job_id)
 
 
-def _handle_process_error(job_id: str, error: Exception) -> None:
-    """Handle processing error: update database."""
-    logger.exception('Processing "%s" failed', job_id)
-    error_job = DeidentificationJob.objects.get(pk=job_id)
-    error_job.error_message = f'Processing error: {error}'
-    error_job.status = 'failed'
-    error_job.save()
+def _apply_error(job: DeidentificationJob, error: Exception) -> None:
+    """Mark the job as failed, when engine fails."""
+    message = f'Processing error: {error}'
+    logger.error('Job "%s" failed in engine: %s', job.job_id, error)
+
+    if DeidentificationJob.objects.filter(pk=job.pk, status='processing').update(
+        status='failed', error_message=message
+    ):
+        job.status = 'failed'
+        job.error_message = message
 
 
-def _sync_progress(client: httpx.Client, engine_url: str) -> None:
-    """Pull the engine's progress into the local tracker for SSE consumers."""
-    progress_resp = client.get(f'{engine_url}/api/progress')
-    if progress_resp.status_code == 200:
-        p = progress_resp.json()
-        tracker.overall_progress = p.get('percentage', 0)
-        tracker.overall_stage = p.get('stage', '')
-        tracker.rows_processed = p.get('rows_processed')
-        tracker.rows_total = p.get('rows_total')
+def sync_status(job: DeidentificationJob) -> dict | None:
+    """Sync a processing job against the engine's terminal state."""
+    if job.status != 'processing':
+        return None
 
+    job_id = str(job.job_id)
+    response = _engine_get('/api/process', job_id)
 
-def run_processing(job_id: str, input_file: str, input_cols: str, output_cols: str, datakey: str | None) -> None:
-    """Run processing by delegating to the engine via shared file paths (no upload)."""
-    current_job = DeidentificationJob.objects.get(pk=job_id)
-    job_handler = setup_job_logging(job_id, input_file, current_job)
+    # engine unreachable -> leave processing, retry next tick
+    if response is None:
+        return None
 
-    try:
-        with job_control.run_job(job_id), contextlib.closing(job_handler):
-            engine_url = settings.ENGINE_URL
-            input_path = Path(settings.MEDIA_ROOT) / 'input' / input_file
-            output_dir = Path(settings.MEDIA_ROOT) / 'output' / job_id
-            output_dir.mkdir(parents=True, exist_ok=True)
+    match response.status_code:
+        case httpx.codes.CONFLICT:
+            return _engine_progress(job_id)
+        case httpx.codes.OK:
+            _apply_completion(job, response.json())
+        case httpx.codes.INTERNAL_SERVER_ERROR:
+            detail = 'Engine processing failed'
+            if response.content:
+                detail = response.json().get('detail', detail)
+            _apply_error(job, RuntimeError(detail))
 
-            payload: dict = {
-                'file_path': str(input_path),
-                'output_dir': str(output_dir),
-                'input_cols': input_cols,
-            }
-            if datakey:
-                payload['datakey_path'] = str(Path(settings.MEDIA_ROOT) / 'input' / datakey)
-
-            with httpx.Client(timeout=None) as client:
-                # 1. Submit job to engine (paths only, no file transfer)
-                client.post(f'{engine_url}/api/process', json=payload).raise_for_status()
-
-                # 2. Poll until done, cancelled, or failed
-                while True:
-                    if job_control.is_cancelled(job_id):
-                        client.delete(f'{engine_url}/api/process')
-                        raise JobCancelledError(job_id)
-
-                    result_resp = client.get(f'{engine_url}/api/process')
-
-                    if result_resp.status_code == 200:
-                        break
-                    if result_resp.status_code == 500:
-                        detail = result_resp.json().get('detail', 'Engine processing failed')
-                        raise RuntimeError(detail)
-
-                    # 409 = still running — mirror engine progress for SSE
-                    _sync_progress(client, engine_url)
-                    time.sleep(_POLL_INTERVAL)
-
-            result = result_resp.json()
-            tracker.overall_progress = 100
-            tracker.overall_stage = 'done'
-
-            _handle_process_completion(current_job, result.get('preview'), input_file)
-
-    except JobCancelledError:
-        _handle_process_cancellation(job_id)
-    except Exception as error:
-        logger.exception('Unexpected error during run process %s', job_id)
-        _handle_process_error(job_id, error)
-    finally:
-        logging.getLogger('deidentify').removeHandler(job_handler)
-        with contextlib.suppress(AttributeError, RuntimeError):
-            tracker.clean_progress_bar()
+    return None

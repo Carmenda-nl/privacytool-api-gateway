@@ -18,7 +18,7 @@ from django.utils import translation
 from django.utils.translation import gettext as _
 
 from api.models import DeidentificationJob
-from api.services.job_runner import engine_headers, reconcile_job
+from api.services.job_runner import engine_header, sync_status
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -80,16 +80,16 @@ def _json_format(**data: object) -> str:
 
 
 async def _finalize(job_id: str) -> AsyncGenerator[str]:
-    """Reconcile the job against the engine once and report its terminal status.
+    """Sync the job against the engine once and report its terminal status.
 
-    Runs after the live stream ends: `reconcile_job` links the engine's output and flips
+    Runs after the live stream ends: `sync_status` links the engine's output and flips
     the job to its terminal state in the database, which the live stream alone does not do.
     """
     job = await DeidentificationJob.objects.aget(pk=job_id)
 
     info = None
     if job.status in DeidentificationJob.ACTIVE_STATUSES:
-        info = await sync_to_async(reconcile_job)(job)
+        info = await sync_to_async(sync_status)(job)
         job = await DeidentificationJob.objects.aget(pk=job_id)
 
         if job.status not in DeidentificationJob.ACTIVE_STATUSES:
@@ -107,7 +107,7 @@ async def progress(request: HttpRequest, job_id: str) -> StreamingHttpResponse:
         translation.activate(language)
 
         # Phase 1: relay the engine's live progress.
-        async with httpx.AsyncClient(timeout=httpx.Timeout(5.0, read=None), headers=engine_headers()) as client:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(5.0, read=None), headers=engine_header()) as client:
             async for live in _relay_engine_stream(client, str(job_id)):
                 if live is None:  # engine reached a terminal state
                     break

@@ -7,6 +7,6 @@
 
 This package forwards deidentification jobs to the engine (job_runner), which
 runs them on their job_id, so the HTTP request can return immediately. Progress
-and completion are reconciled on demand from the engine and streamed to the
+and completion are synced on demand from the engine and streamed to the
 frontend using Server-Sent Events (SSE).
 """
