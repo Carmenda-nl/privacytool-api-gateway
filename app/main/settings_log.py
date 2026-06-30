@@ -5,7 +5,7 @@
 
 """Django logging configuration.
 
-Daphne and asyncio loggers are silenced to reduce noise in production.
+The asyncio logger is silenced to reduce noise in production.
 """
 
 from pathlib import Path
@@ -95,11 +95,6 @@ LOGGING = {
         'asyncio': {
             'handlers': ['console'],
             'level': 'WARNING',
-            'propagate': False,
-        },
-        'daphne': {
-            'handlers': ['console'],
-            'level': 'ERROR',
             'propagate': False,
         },
     },

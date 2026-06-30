@@ -3,6 +3,9 @@
 run:
 	uv run manage.py runserver
 
+prod:
+	uv run uvicorn main.asgi:application --port 8000
+
 lint:
 	uv run ruff check .
 
