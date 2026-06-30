@@ -1,0 +1,49 @@
+# ------------------------------------------------------------------------------------------------ #
+# Copyright (c) 2026 Carmenda. All rights reserved.                                                #
+# This program is distributed under the terms of the GNU General Public License: GPL-3.0-or-later  #
+# ------------------------------------------------------------------------------------------------ #
+
+name: privacytool
+
+services:
+  engine:
+    container_name: engine
+    build:
+      context: ../../carmenda-deduce-engine
+      dockerfile: deployment/Dockerfile
+    environment:
+      PORT: 8001
+      DEBUG: False
+      LOG_LEVEL: INFO
+      M2M_HASH: ${M2M_SECRET:?set M2M_SECRET in deployment/.env}
+    volumes:
+      - data:/app/data
+    expose:
+      - 8001
+    tty: true
+    mem_limit: 6g
+    mem_reservation: 2g
+    restart: unless-stopped
+
+  gateway:
+    container_name: api-gateway
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile
+    environment:
+      DEBUG: False
+      LOG_LEVEL: INFO
+      SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY in deployment/.env}
+      ENGINE_URL: http://engine:8001
+      ENGINE_M2M_HASH: ${M2M_SECRET:?set M2M_SECRET in deployment/.env}
+    ports:
+      - 8000:8000
+    volumes:
+      - data:/app/data
+    depends_on:
+      - engine
+    mem_limit: 1g
+    restart: unless-stopped
+
+volumes:
+  data:

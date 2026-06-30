@@ -17,7 +17,7 @@ decoupling the API layer from the underlying pseudonymization logic.
 ## Features
 
 - **REST API**: HTTP endpoints for submitting and managing pseudonymization requests
-- **CSV Sanitization**: Uploaded CSV files are sanitized and normalized (encoding, HTML stripping, quote handling) before being routed to the engine
+- **CSV Sanitization**: Uploaded CSV files are sanitized and normalized (encoding, HTML stripping, quote handling)
 - **Asynchronous Processing**: Job-based processing with real-time progress tracking via Server-Sent Events (SSE)
 - **Job Management**: Cancel running jobs and track processing status through the API
 - **API Documentation**: Automatic OpenAPI/Swagger documentation for easy integration
@@ -58,28 +58,51 @@ For questions or support, please contact us at [support@carmenda.nl](mailto:supp
 
 ---
 
-## Deployment (Docker)
+## Deployment (Docker Compose)
 
-### Build the Docker Image
+The gateway runs alongside the [deduce engine](../carmenda-deduce-engine), which is built from a
+local checkout as a sibling directory next to this repository. Compose builds and runs both
+services, wires them together over an internal network, and shares the data directory between
+them (the gateway forwards jobs to the engine by absolute path, so both mount the same volume).
 
-Build the backend image from the Dockerfile:
+### Configure environment variables
 
-```bash
-# Run this command from the project root directory
-docker build -f deployment/Dockerfile -t privacytool-api-gateway:latest .
-```
-
-### Run the Privacy Tool
-
-Use the following command to run the privacy tool:
+The gateway and engine authenticate over a shared machine-to-machine secret, and the gateway
+needs its own Django secret key. Both are read from `deployment/.env`:
 
 ```bash
-docker run -it --rm -p 8000:8000 -e DEBUG=True privacytool-api-gateway:latest
+# deployment/.env
+M2M_SECRET=<your-shared-secret>
+SECRET_KEY=<your-django-secret-key>
 ```
 
-The API will be available at `http://localhost:8000/`
+> **Note:** Rotate `M2M_SECRET` and `SECRET_KEY` for production deployments.
+
+### Build and run
+
+```bash
+# Run from the deployment/ directory
+docker compose up -d --build
+```
+
+The API will be available at `http://localhost:8000/`. The engine is reachable only on the
+internal compose network (it is not published to the host).
 
 > **Note:** Set `DEBUG=False` for production environments.
+
+### Viewing the engine's progress bar
+
+The engine renders its processing progress as a live, redrawing Rich progress bar.
+Docker Compose's combined log output prefixes and line-buffers each service's output, 
+which breaks that live redraw — the bar will appear frozen or
+garbled there. The engine container has a fixed name (`engine`) so you can attach to it
+directly instead, which shows the bar exactly as `docker run -it` would:
+
+```bash
+docker attach engine
+```
+
+Detach without stopping the container with `Ctrl+P, Ctrl+Q` (plain `Ctrl+C` stops it).
 
 ### API Documentation
 
@@ -145,7 +168,8 @@ ENGINE_URL=http://127.0.0.1:8001
 ENGINE_M2M_HASH=
 ```
 
-> **Note:** Replace `your-secret-key-here` with a secure random string. For production environments, ensure `DEBUG=False` and use appropriate CSRF trusted origins.
+> **Note:** Replace `your-secret-key-here` with a secure random string. For production environments, 
+ensure `DEBUG=False` and use appropriate CSRF trusted origins.
 
 > **Note:** `ENGINE_M2M_HASH` is the shared secret sent as the `X-M2M-Key` header on every engine call.
 It must match the engine's `M2M_HASH`. A mismatch makes the engine reject all jobs with `401`.
