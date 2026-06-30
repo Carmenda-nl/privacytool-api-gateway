@@ -39,7 +39,6 @@ ENGINE_M2M_HASH = env('ENGINE_M2M_HASH')
 
 
 INSTALLED_APPS = [
-    'daphne',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
