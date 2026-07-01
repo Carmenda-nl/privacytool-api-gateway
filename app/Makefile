@@ -1,10 +1,10 @@
 .PHONY: run prod lint format test typecheck check
 
 run:
-	uv run manage.py runserver
+	uv run uvicorn main.asgi:application --reload
 
 prod:
-	uv run uvicorn main.asgi:application --port 8000
+	uv run uvicorn main.asgi:application
 
 lint:
 	uv run ruff check .
