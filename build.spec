@@ -93,7 +93,7 @@ datas = [
 ]
 
 a = Analysis(
-    [str(app_path / 'manage.py')],
+    [str(app_path / 'frozen.py')],
     pathex=[],
     binaries=binaries,
     datas=datas,

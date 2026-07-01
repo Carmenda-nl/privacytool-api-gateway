@@ -17,6 +17,8 @@ env = environ.FileAwareEnv(
     # Set casting, default values for env's
     DEBUG=(bool, False),
     LOG_LEVEL=(str, 'INFO'),
+    HOST=(str, '127.0.0.1'),
+    PORT=(int, 8000),
     ENGINE_URL=(str, 'http://127.0.0.1:8001'),
     ENGINE_M2M_HASH=(str, ''),
 )
@@ -31,8 +33,10 @@ DEBUG = env('DEBUG')
 SECRET_KEY = env('SECRET_KEY', default=get_random_secret_key())
 
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1'])
 CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=['http://127.0.0.1'])
+HOST = env('HOST')
+PORT = env('PORT')
 
 ENGINE_URL = env('ENGINE_URL')
 ENGINE_M2M_HASH = env('ENGINE_M2M_HASH')
