@@ -18,4 +18,4 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'main.settings')
 if __name__ == '__main__':
     from main.settings import HOST, PORT
 
-    uvicorn.run('main.asgi:application', host=HOST, port=PORT)
+    uvicorn.run('main.asgi:application', host=HOST, port=PORT, lifespan='off')
