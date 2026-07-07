@@ -39,8 +39,6 @@ def sanitize_uploaded(job: DeidentificationJob, file_metadata: dict) -> None:
     Reuses the encoding/delimiter/header detected during validation
     (`file_metadata` from the serializer) so the file is read once.
     """
-    output_folder = str(Path(settings.MEDIA_ROOT) / 'output')
-
     for field_name in ('input_file', 'datakey'):
         metadata = file_metadata.get(field_name)
         if not metadata or metadata.get('file_type') != 'csv':
@@ -55,7 +53,7 @@ def sanitize_uploaded(job: DeidentificationJob, file_metadata: dict) -> None:
             'encoding': metadata['encoding'],
             'delimiter': metadata['delimiter'],
         }
-        load_csv(Path(field.path), output_folder, properties)
+        load_csv(Path(field.path), properties)
 
 
 def get_metadata(represent: dict, instance: DeidentificationJob, fields: list[str]) -> dict:

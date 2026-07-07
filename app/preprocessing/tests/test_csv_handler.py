@@ -203,10 +203,7 @@ class TestSanitizeCsv:
             'header': 'naam;stad',
         }
 
-        output_folder = tmp_path / 'output'
-        output_folder.mkdir()
-
-        sanitized_path = _sanitize_csv(file, properties, str(output_folder))
+        sanitized_path = _sanitize_csv(file, properties)
         sanitized_file = Path(sanitized_path)
 
         assert sanitized_file.exists()
@@ -224,10 +221,7 @@ class TestSanitizeCsv:
             'header': 'name;text',
         }
 
-        output_folder = tmp_path / 'output'
-        output_folder.mkdir()
-
-        sanitized_path = _sanitize_csv(file, properties, str(output_folder))
+        sanitized_path = _sanitize_csv(file, properties)
         content = Path(sanitized_path).read_text(encoding='utf-8')
 
         assert 'fish & chips' in content
@@ -244,10 +238,7 @@ class TestSanitizeCsv:
             'header': 'name,text',
         }
 
-        output_folder = tmp_path / 'output'
-        output_folder.mkdir()
-
-        sanitized_path = _sanitize_csv(file, properties, str(output_folder))
+        sanitized_path = _sanitize_csv(file, properties)
         content = Path(sanitized_path).read_text(encoding='utf-8')
 
         # With comma delimiter, HTML should NOT be unescaped
@@ -260,12 +251,9 @@ class TestSanitizeCsv:
 
         properties = {'encoding': 'utf-8', 'delimiter': ',', 'header': 'name,age'}
 
-        output_folder = tmp_path / 'output'
-        output_folder.mkdir()
+        _sanitize_csv(file, properties)
 
-        _sanitize_csv(file, properties, str(output_folder))
-
-        assert list(output_folder.iterdir()) == []
+        assert list(tmp_path.glob('*_skipped_lines.csv')) == []
 
     def test_error_file_written_on_decode_errors(self, tmp_path: Path) -> None:
         """A `_skipped_lines.csv` is written for lines that fail to decode."""
@@ -274,13 +262,10 @@ class TestSanitizeCsv:
 
         properties = {'encoding': 'utf-8', 'delimiter': ',', 'header': 'name,age'}
 
-        output_folder = tmp_path / 'output'
-        output_folder.mkdir()
+        _sanitize_csv(file, properties)
 
-        _sanitize_csv(file, properties, str(output_folder))
-
-        error_files = list(output_folder.glob('*_skipped_lines.csv'))
-        assert len(error_files) == 1
+        error_files = list(tmp_path.glob('*_skipped_lines.csv'))
+        assert error_files == [tmp_path / 'test_skipped_lines.csv']
         assert 'name,age' in error_files[0].read_text(encoding='utf-8')
 
 

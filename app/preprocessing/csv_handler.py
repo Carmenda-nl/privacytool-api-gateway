@@ -98,22 +98,7 @@ def detect_csv_properties(file_path: Path) -> dict[str, str]:
     return {'header': header, 'encoding': encoding, 'delimiter': delimiter}
 
 
-def _collect_errors(file_path: Path, error_temp: str, output_folder: str, error_count: int) -> None:
-    """Collect encoding errors and write them to a separate CSV file."""
-    try:
-        input_base = Path(output_folder).parent / 'input'
-        parent = file_path.parent.relative_to(input_base)
-        target_dir = Path(output_folder) / parent
-    except ValueError:
-        target_dir = Path(output_folder)
-
-    target_dir.mkdir(parents=True, exist_ok=True)
-    error_csv = target_dir / f'{file_path.stem}_skipped_lines.csv'
-    shutil.move(error_temp, error_csv)
-    logger.warning('%d errors in rows found.', error_count)
-
-
-def _sanitize_csv(file_path: Path, properties: dict[str, str], output_folder: str) -> str:
+def _sanitize_csv(file_path: Path, properties: dict[str, str]) -> str:
     """Convert CSV to UTF-8 and sanitize content.
 
     When the delimiter is `;`, unescape HTML character entities while replacing
@@ -173,7 +158,9 @@ def _sanitize_csv(file_path: Path, properties: dict[str, str], output_folder: st
                 buffer = b''
 
     if error_temp:
-        _collect_errors(file_path, error_temp.name, output_folder, error_count)
+        error_csv = file_path.parent / f'{file_path.stem}_skipped_lines.csv'
+        shutil.move(error_temp.name, error_csv)
+        logger.warning('%d errors in rows found.', error_count)
     else:
         logger.info('No errors in rows found.')
 
@@ -206,12 +193,12 @@ def _normalize_csv(file_path: Path, properties: dict[str, str]) -> str:
     return csv_temp.name
 
 
-def load_csv(file_path: Path, output_folder: str, properties: dict[str, str] | None = None) -> None:
+def load_csv(file_path: Path, properties: dict[str, str] | None = None) -> None:
     """Sanitize and normalize a CSV file in place (UTF-8, comma-delimited, no empty rows)."""
     if properties is None:
         properties = detect_csv_properties(file_path)
 
-    sanitized_csv = _sanitize_csv(file_path, properties, output_folder)
+    sanitized_csv = _sanitize_csv(file_path, properties)
     normalized_csv = _normalize_csv(Path(sanitized_csv), properties)
 
     Path(sanitized_csv).unlink(missing_ok=True)
