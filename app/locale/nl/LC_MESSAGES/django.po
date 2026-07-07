@@ -125,3 +125,11 @@ msgstr "Nederlands"
 #: .\api\views\sse_views.py:84 .\api\views\sse_views.py:87
 msgid "processing"
 msgstr "verwerking"
+
+#: .\api\views\sse_views.py:38
+msgid "initializing model"
+msgstr "model initialiseren"
+
+#: .\api\views\sse_views.py:38
+msgid "pseudonymize"
+msgstr "pseudonimiseren"
