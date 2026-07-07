@@ -7,8 +7,10 @@
 
 from __future__ import annotations
 
+import contextlib
 import csv
 import html
+import itertools
 import logging
 import re
 import shutil
@@ -123,62 +125,54 @@ def _sanitize_csv(file_path: Path, properties: dict[str, str], output_folder: st
     error_temp = None
     error_count = 0
 
-    def _write_error(raw_line: bytes) -> None:
-        nonlocal error_temp, error_count
-        if error_temp is None:
-            # Lazily create the error file only once an actual decode error occurs,
-            # since most uploads have none and never need it.
-            error_temp = tempfile.NamedTemporaryFile('w', encoding='utf-8', newline='', delete=False, suffix='.csv')
-            error_temp.write(header.replace(delimiter, ',') + '\n')
+    with (
+        contextlib.ExitStack() as stack,
+        file_path.open('rb') as file,
+        tempfile.NamedTemporaryFile('w', encoding='utf-8', newline='', delete=False) as temp_file,
+    ):
+        chunk_size = 8 * 1024 * 1024
+        buffer = b''
 
-        error_line = raw_line.decode(encoding, errors='replace').replace(delimiter, ',')
-        error_temp.write(error_line + '\n')
-        error_count += 1
+        for chunk in itertools.chain(iter(lambda: file.read(chunk_size), b''), (b'',)):
+            buffer += chunk
 
-    try:
-        with (
-            file_path.open('rb') as file,
-            tempfile.NamedTemporaryFile('w', encoding='utf-8', newline='', delete=False) as temp_file,
-        ):
-            chunk_size = 8 * 1024 * 1024
-            buffer = b''
+            try:
+                text = buffer.decode(encoding)
+            except UnicodeDecodeError, LookupError:
+                for raw_line in buffer.split(b'\n'):
+                    try:
+                        # handle errors line by line if the chunk contains invalid sequences
+                        line = raw_line.decode(encoding)
+                    except UnicodeDecodeError, LookupError:
+                        if not error_temp:
+                            # Lazily create the error file only once an actual decode error occurs,
+                            # since most uploads have none and never need it.
+                            error_temp = stack.enter_context(
+                                tempfile.NamedTemporaryFile(
+                                    'w', encoding='utf-8', newline='', delete=False, suffix='.csv'
+                                ),
+                            )
+                            error_temp.write(header.replace(delimiter, ',') + '\n')
 
-            while True:
-                chunk = file.read(chunk_size)
-                if not chunk and not buffer:
-                    break
+                        error_line = raw_line.decode(encoding, errors='replace').replace(delimiter, ',')
+                        error_temp.write(error_line + '\n')
+                        error_count += 1
+                        continue
 
-                buffer += chunk
-
-                try:
-                    text = buffer.decode(encoding)
-                except UnicodeDecodeError, LookupError:
-                    for raw_line in buffer.split(b'\n'):
-                        try:
-                            # handle errors line by line if the chunk contains invalid sequences
-                            line = raw_line.decode(encoding)
-                        except UnicodeDecodeError, LookupError:
-                            _write_error(raw_line)
-                            continue
-
-                        if replace_html:
-                            line = _html_unescape(HTML_TAG.sub('', line))
-                        temp_file.write(line + '\n')
-                    buffer = b''
-                    continue
-
-                # Check if the buffer is safe to flush (even number of quotes = not inside a quoted field)
-                quote_count = text.count('"') - text.count('\\"')
-                if not chunk or quote_count % 2 == 0:
                     if replace_html:
-                        text = _html_unescape(HTML_TAG.sub('', text))
-                    temp_file.write(text)
-                    buffer = b''
-    finally:
-        if error_temp is not None:
-            error_temp.close()
+                        line = _html_unescape(HTML_TAG.sub('', line))
+                    temp_file.write(line + '\n')
+                buffer = b''
+                continue
 
-    if error_temp is not None:
+            quote_count = text.count('"') - text.count('\\"')
+            if not chunk or quote_count % 2 == 0:
+                if replace_html:
+                    text = _html_unescape(HTML_TAG.sub('', text))
+                temp_file.write(text)
+                buffer = b''
+
+    if error_temp:
         _collect_errors(file_path, error_temp.name, output_folder, error_count)
     else:
         logger.info('No errors in rows found.')
