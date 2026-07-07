@@ -253,6 +253,36 @@ class TestSanitizeCsv:
         # With comma delimiter, HTML should NOT be unescaped
         assert 'fish &amp; chips' in content
 
+    def test_no_error_file_when_no_decode_errors(self, tmp_path: Path) -> None:
+        """No `_skipped_lines.csv` is written when the input decodes cleanly."""
+        file = tmp_path / 'test.csv'
+        file.write_text('name,age\nAlice,30', encoding='utf-8')
+
+        properties = {'encoding': 'utf-8', 'delimiter': ',', 'header': 'name,age'}
+
+        output_folder = tmp_path / 'output'
+        output_folder.mkdir()
+
+        _sanitize_csv(file, properties, str(output_folder))
+
+        assert list(output_folder.iterdir()) == []
+
+    def test_error_file_written_on_decode_errors(self, tmp_path: Path) -> None:
+        """A `_skipped_lines.csv` is written for lines that fail to decode."""
+        file = tmp_path / 'test.csv'
+        file.write_bytes(b'name,age\nAlice,30\n\xff\xfe,40\n')
+
+        properties = {'encoding': 'utf-8', 'delimiter': ',', 'header': 'name,age'}
+
+        output_folder = tmp_path / 'output'
+        output_folder.mkdir()
+
+        _sanitize_csv(file, properties, str(output_folder))
+
+        error_files = list(output_folder.glob('*_skipped_lines.csv'))
+        assert len(error_files) == 1
+        assert 'name,age' in error_files[0].read_text(encoding='utf-8')
+
 
 # ----------------------------- NORMALIZE CSV TESTS ----------------------------- #
 

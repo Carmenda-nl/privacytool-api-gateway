@@ -96,26 +96,19 @@ def detect_csv_properties(file_path: Path) -> dict[str, str]:
     return {'header': header, 'encoding': encoding, 'delimiter': delimiter}
 
 
-def _collect_errors(file_path: Path, error_temp: str, output_folder: str) -> None:
+def _collect_errors(file_path: Path, error_temp: str, output_folder: str, error_count: int) -> None:
     """Collect encoding errors and write them to a separate CSV file."""
-    error_file = Path(error_temp)
-    error_count = sum(1 for _ in error_file.open(encoding='utf-8')) - 1
+    try:
+        input_base = Path(output_folder).parent / 'input'
+        parent = file_path.parent.relative_to(input_base)
+        target_dir = Path(output_folder) / parent
+    except ValueError:
+        target_dir = Path(output_folder)
 
-    if error_count > 0:
-        try:
-            input_base = Path(output_folder).parent / 'input'
-            parent = file_path.parent.relative_to(input_base)
-            target_dir = Path(output_folder) / parent
-        except ValueError:
-            target_dir = Path(output_folder)
-
-        target_dir.mkdir(parents=True, exist_ok=True)
-        error_csv = target_dir / f'{file_path.stem}_skipped_lines.csv'
-        shutil.move(error_temp, error_csv)
-        logger.warning('%d errors in rows found.', error_count)
-    else:
-        error_file.unlink()
-        logger.info('No errors in rows found.')
+    target_dir.mkdir(parents=True, exist_ok=True)
+    error_csv = target_dir / f'{file_path.stem}_skipped_lines.csv'
+    shutil.move(error_temp, error_csv)
+    logger.warning('%d errors in rows found.', error_count)
 
 
 def _sanitize_csv(file_path: Path, properties: dict[str, str], output_folder: str) -> str:
@@ -127,52 +120,68 @@ def _sanitize_csv(file_path: Path, properties: dict[str, str], output_folder: st
     header, encoding, delimiter = properties['header'], properties['encoding'], properties['delimiter']
     replace_html = delimiter == ';'
 
-    with (
-        file_path.open('rb') as file,
-        tempfile.NamedTemporaryFile('w', encoding='utf-8', newline='', delete=False) as temp_file,
-        tempfile.NamedTemporaryFile('w', encoding='utf-8', newline='', delete=False, suffix='.csv') as error_temp,
-    ):
-        chunk_size = 8 * 1024 * 1024
-        buffer = b''
+    error_temp = None
+    error_count = 0
 
-        # Add a header to the error file
-        error_temp.write(header.replace(delimiter, ',') + '\n')
+    def _write_error(raw_line: bytes) -> None:
+        nonlocal error_temp, error_count
+        if error_temp is None:
+            # Lazily create the error file only once an actual decode error occurs,
+            # since most uploads have none and never need it.
+            error_temp = tempfile.NamedTemporaryFile('w', encoding='utf-8', newline='', delete=False, suffix='.csv')
+            error_temp.write(header.replace(delimiter, ',') + '\n')
 
-        while True:
-            chunk = file.read(chunk_size)
-            if not chunk and not buffer:
-                break
+        error_line = raw_line.decode(encoding, errors='replace').replace(delimiter, ',')
+        error_temp.write(error_line + '\n')
+        error_count += 1
 
-            buffer += chunk
+    try:
+        with (
+            file_path.open('rb') as file,
+            tempfile.NamedTemporaryFile('w', encoding='utf-8', newline='', delete=False) as temp_file,
+        ):
+            chunk_size = 8 * 1024 * 1024
+            buffer = b''
 
-            try:
-                text = buffer.decode(encoding)
-            except UnicodeDecodeError, LookupError:
-                for raw_line in buffer.split(b'\n'):
-                    try:
-                        # handle errors line by line if the chunk contains invalid sequences
-                        line = raw_line.decode(encoding)
-                    except UnicodeDecodeError, LookupError:
-                        error_line = raw_line.decode(encoding, errors='replace')
-                        error_line = error_line.replace(delimiter, ',')
-                        error_temp.write(error_line + '\n')
-                        continue
+            while True:
+                chunk = file.read(chunk_size)
+                if not chunk and not buffer:
+                    break
 
+                buffer += chunk
+
+                try:
+                    text = buffer.decode(encoding)
+                except UnicodeDecodeError, LookupError:
+                    for raw_line in buffer.split(b'\n'):
+                        try:
+                            # handle errors line by line if the chunk contains invalid sequences
+                            line = raw_line.decode(encoding)
+                        except UnicodeDecodeError, LookupError:
+                            _write_error(raw_line)
+                            continue
+
+                        if replace_html:
+                            line = _html_unescape(HTML_TAG.sub('', line))
+                        temp_file.write(line + '\n')
+                    buffer = b''
+                    continue
+
+                # Check if the buffer is safe to flush (even number of quotes = not inside a quoted field)
+                quote_count = text.count('"') - text.count('\\"')
+                if not chunk or quote_count % 2 == 0:
                     if replace_html:
-                        line = _html_unescape(HTML_TAG.sub('', line))
-                    temp_file.write(line + '\n')
-                buffer = b''
-                continue
+                        text = _html_unescape(HTML_TAG.sub('', text))
+                    temp_file.write(text)
+                    buffer = b''
+    finally:
+        if error_temp is not None:
+            error_temp.close()
 
-            # Check if the buffer is safe to flush (even number of quotes = not inside a quoted field)
-            quote_count = text.count('"') - text.count('\\"')
-            if not chunk or quote_count % 2 == 0:
-                if replace_html:
-                    text = _html_unescape(HTML_TAG.sub('', text))
-                temp_file.write(text)
-                buffer = b''
-
-    _collect_errors(file_path, error_temp.name, output_folder)
+    if error_temp is not None:
+        _collect_errors(file_path, error_temp.name, output_folder, error_count)
+    else:
+        logger.info('No errors in rows found.')
 
     return temp_file.name
 
