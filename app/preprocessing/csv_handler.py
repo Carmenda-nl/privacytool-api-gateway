@@ -157,11 +157,12 @@ def _sanitize_csv(file_path: Path, properties: dict[str, str]) -> str:
                 temp_file.write(text)
                 buffer = b''
 
+    error_csv = file_path.parent / f'{file_path.stem}_skipped_lines.csv'
     if error_temp:
-        error_csv = file_path.parent / f'{file_path.stem}_skipped_lines.csv'
         shutil.move(error_temp.name, error_csv)
         logger.warning('%d errors in rows found.', error_count)
     else:
+        error_csv.unlink(missing_ok=True)
         logger.info('No errors in rows found.')
 
     return temp_file.name

@@ -255,6 +255,19 @@ class TestSanitizeCsv:
 
         assert list(tmp_path.glob('*_skipped_lines.csv')) == []
 
+    def test_stale_error_file_removed_on_clean_upload(self, tmp_path: Path) -> None:
+        """A leftover `_skipped_lines.csv` from a previous upload is removed when the input decodes cleanly."""
+        file = tmp_path / 'test.csv'
+        file.write_text('name,age\nAlice,30', encoding='utf-8')
+        stale = tmp_path / 'test_skipped_lines.csv'
+        stale.write_text('name,age\nold,error', encoding='utf-8')
+
+        properties = {'encoding': 'utf-8', 'delimiter': ',', 'header': 'name,age'}
+
+        _sanitize_csv(file, properties)
+
+        assert not stale.exists()
+
     def test_error_file_written_on_decode_errors(self, tmp_path: Path) -> None:
         """A `_skipped_lines.csv` is written for lines that fail to decode."""
         file = tmp_path / 'test.csv'
