@@ -56,7 +56,7 @@ jobs:
       - name: Upload build artifact
         uses: actions/upload-artifact@v7.0.1
         with:
-          name: backend-windows
+          name: api-gateway-windows
           path: app/dist/api-gateway/
           include-hidden-files: true
 
@@ -73,13 +73,13 @@ jobs:
       - name: Download build artifact
         uses: actions/download-artifact@v8.0.1
         with:
-          name: backend-windows
-          path: backend
+          name: api-gateway-windows
+          path: api-gateway
 
       - name: Create zip archive
         run: |
-          cd backend
-          zip -r ../Privacytool_backend_win_${{ github.ref_name }}.zip *
+          cd api-gateway
+          zip -r ../Privacytool_api-gateway_win_${{ github.ref_name }}.zip *
           cd ..
           ls -lh *.zip
 
