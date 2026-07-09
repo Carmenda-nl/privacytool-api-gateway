@@ -42,7 +42,7 @@ jobs:
       - name: Set up uv
         uses: astral-sh/setup-uv@v8.1.0
         with:
-          python-version: "3.13"
+          python-version: "3.14"
           working-directory: app
 
       - name: Install dependencies
@@ -148,11 +148,3 @@ jobs:
           git add CHANGELOG.md app/main/_version.py
           git diff --cached --quiet || git commit -m "chore(release): update CHANGELOG.md for ${{ github.ref_name }}"
           git push origin HEAD:develop
-
-      - name: Trigger frontend build
-        run: |
-          curl -X POST \
-            -H "Accept: application/vnd.github.v3+json" \
-            -H "Authorization: Bearer ${{ secrets.FRONTEND_TRIGGER_TOKEN }}" \
-            https://api.github.com/repos/Carmenda-nl/carmenda_pseudonymize_frontend/dispatches \
-            -d '{"event_type":"backend-release"}'
