@@ -57,7 +57,7 @@ jobs:
         uses: actions/upload-artifact@v7.0.1
         with:
           name: backend-windows
-          path: app/dist/backend/
+          path: app/dist/api-gateway/
           include-hidden-files: true
 
   create-beta-release:
