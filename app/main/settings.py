@@ -59,6 +59,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.locale.LocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -174,7 +175,9 @@ MEDIA_ROOT = BASE_DIR / 'data'
 
 # Static files
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'static'
+
+# Serve static files straight from the app directories (no collectstatic needed)
+WHITENOISE_USE_FINDERS = True
 
 
 # Default primary key field type
