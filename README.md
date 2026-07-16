@@ -2,7 +2,7 @@
 
 [![Python](https://img.shields.io/badge/python-3.14-blue)](https://www.python.org/downloads/release/python-3146/)
 [![API](https://img.shields.io/badge/api-REST-orange)](https://www.django-rest-framework.org/)
-[![Django](https://img.shields.io/badge/django-5.2-green)](https://docs.djangoproject.com/en/5.2/)
+[![Django](https://img.shields.io/badge/django-6.0-green)](https://docs.djangoproject.com/en/6.0/)
 [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Tests](https://github.com/Carmenda-nl/privacytool-api-gateway/actions/workflows/test-develop.yml/badge.svg?branch=develop)](https://github.com/Carmenda-nl/privacytool-api-gateway/actions/workflows/test-develop.yml)

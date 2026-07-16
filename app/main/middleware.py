@@ -7,29 +7,43 @@
 
 from __future__ import annotations
 
+import asyncio
 import mimetypes
+from inspect import markcoroutinefunction
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import IO, TYPE_CHECKING
 
 from django.conf import settings
-from django.http import FileResponse, HttpResponseNotFound
+from django.http import HttpResponseNotFound, StreamingHttpResponse
 from django.utils.translation import gettext as _
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import AsyncIterator, Awaitable, Callable
 
-    from django.http import FileResponse as FileResponseType
-    from django.http import HttpRequest, HttpResponse
+    from django.http import HttpRequest, HttpResponseBase
 
-    _HttpResponse = HttpResponse | FileResponseType
+
+async def _aiter_file(file_obj: IO[bytes]) -> AsyncIterator[bytes]:
+    """Read a synchronous file object in chunks off the event loop, without blocking it."""
+    try:
+        chunk = await asyncio.to_thread(file_obj.read, 64 * 1024)
+        while chunk:
+            yield chunk
+            chunk = await asyncio.to_thread(file_obj.read, 64 * 1024)
+    finally:
+        await asyncio.to_thread(file_obj.close)
 
 
 class ServeMediaFilesMiddleware:
     """Specifically designed for use with PyInstaller-bundled applications."""
 
-    def __init__(self, get_response: Callable[[HttpRequest], _HttpResponse]) -> None:
+    async_capable = True
+    sync_capable = False
+
+    def __init__(self, get_response: Callable[[HttpRequest], Awaitable[HttpResponseBase]]) -> None:
         """Initialize the ServeMediaFilesMiddleware."""
         self.get_response = get_response
+        markcoroutinefunction(self)
 
         # Check if mime types are correct
         mimetypes.init()
@@ -38,7 +52,7 @@ class ServeMediaFilesMiddleware:
         if not settings.MEDIA_URL.endswith('/'):
             settings.MEDIA_URL = f'{settings.MEDIA_URL}/'
 
-    def __call__(self, request: HttpRequest) -> _HttpResponse:
+    async def __call__(self, request: HttpRequest) -> HttpResponseBase:
         """Handle incoming requests and serve media files."""
         if request.path.startswith(settings.MEDIA_URL):
             relative_path = request.path[len(settings.MEDIA_URL) :]
@@ -49,14 +63,15 @@ class ServeMediaFilesMiddleware:
             # Checks if the file exists and is readable
             if file_path.exists() and file_path.is_file():
                 try:
-                    file_obj = file_path.open('rb')
+                    file_obj = await asyncio.to_thread(file_path.open, 'rb')
                     content_type, _encoding = mimetypes.guess_type(str(file_path))
 
                     if content_type is None:
                         content_type = 'application/octet-stream'
 
-                    # Sends the file as response
-                    response = FileResponse(file_obj, content_type=content_type)
+                    # Streams the file as response
+                    response = StreamingHttpResponse(_aiter_file(file_obj), content_type=content_type)
+                    response['Content-Length'] = str(file_path.stat().st_size)
 
                     if 'download' in request.GET:
                         response['Content-Disposition'] = f'attachment; filename="{file_path.name}"'
@@ -69,4 +84,4 @@ class ServeMediaFilesMiddleware:
 
             return HttpResponseNotFound(_('File {path} not found.').format(path=relative_path))
 
-        return self.get_response(request)
+        return await self.get_response(request)

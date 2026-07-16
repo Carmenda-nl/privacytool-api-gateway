@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING
 import polars as pl
 from fastexcel import read_excel
 
-from preprocessing.csv_handler import detect_csv_properties, strip_bom
+from preprocessing.csv_handler import strip_bom
 
 if TYPE_CHECKING:
     from api.models import DeidentificationJob
@@ -27,11 +27,8 @@ MAX_LAST_PREVIEW_ROWS = 3
 
 def _csv_preview(file_path: str) -> list[dict]:
     """Read the first & last rows from a CSV file."""
-    properties = detect_csv_properties(Path(file_path))
-    encoding, delimiter = properties['encoding'], properties['delimiter']
-
-    with Path(file_path).open(encoding=encoding, newline='', errors='ignore') as file:
-        csv_reader = csv.reader(file, delimiter=delimiter)
+    with Path(file_path).open(encoding='utf-8', newline='', errors='ignore') as file:
+        csv_reader = csv.reader(file)
 
         header_row = next(csv_reader)
         header_row[0] = strip_bom(header_row[0])

@@ -60,9 +60,10 @@ LOGGING = {
         },
         'debug_file': {
             'level': 'DEBUG',
-            'class': 'logging.FileHandler',
+            'class': 'logging.handlers.RotatingFileHandler',
             'filename': str(logs_dir / 'debug.log'),
-            'mode': 'w',
+            'maxBytes': 2 * 1024 * 1024,
+            'backupCount': 3,
             'encoding': 'utf-8',
             'formatter': 'verbose',
         },
@@ -73,17 +74,17 @@ LOGGING = {
     },
     'loggers': {
         'django': {
-            'handlers': ['console'],
+            'handlers': ['console', 'debug_file'],
             'level': 'INFO',
             'propagate': False,
         },
         'django.request': {
-            'handlers': ['console'],
+            'handlers': ['console', 'debug_file'],
             'level': 'ERROR',
             'propagate': False,
         },
         'django.db.backends': {
-            'handlers': ['console'],
+            'handlers': ['console', 'debug_file'],
             'level': 'INFO',
             'propagate': False,
         },

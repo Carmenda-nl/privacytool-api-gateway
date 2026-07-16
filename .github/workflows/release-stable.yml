@@ -24,7 +24,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v7.0.0
         with:
           fetch-depth: 0
 
@@ -75,17 +75,18 @@ jobs:
             echo "tag=${{ steps.version_from_releases.outputs.stable_tag }}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Get release notes from CHANGELOG
-        run: |
-          python3 << 'EOF'
-          import re
-          stable = '${{ steps.set_tag.outputs.tag }}'.lstrip('v')
-          with open('CHANGELOG.md', 'r') as f:
-              content = f.read()
-          match = re.search(r'(## \[' + re.escape(stable) + r'\].*?)(?=\n## \[|\Z)', content, re.DOTALL)
-          with open('release_notes.md', 'w') as f:
-              f.write(match.group(1).strip() if match else '')
-          EOF
+      - name: Remove beta tag locally for release notes generation
+        if: steps.determine_tag.outputs.has_beta == 'true'
+        run: git tag -d "${{ steps.determine_tag.outputs.beta_tag }}" || true
+
+      - name: Get release notes
+        id: release_notes
+        uses: orhun/git-cliff-action@v4.8.0
+        with:
+          config: cliff.toml
+          args: --tag ${{ steps.set_tag.outputs.tag }} --unreleased --strip header
+        env:
+          OUTPUT: release_notes.md
 
       - name: Download beta release assets
         if: steps.determine_tag.outputs.has_beta == 'true'
@@ -147,12 +148,3 @@ jobs:
           echo "Deleted beta tag"
 
           echo "Promotion complete: ${{ steps.determine_tag.outputs.beta_tag }} → ${{ steps.determine_tag.outputs.stable_tag }}"
-
-      - name: Trigger frontend build
-        if: steps.create_stable_from_beta.outputs.success == 'true' || steps.create_stable_from_develop.outputs.success == 'true'
-        run: |
-          curl -X POST \
-            -H "Accept: application/vnd.github.v3+json" \
-            -H "Authorization: Bearer ${{ secrets.FRONTEND_TRIGGER_TOKEN }}" \
-            https://api.github.com/repos/Carmenda-nl/carmenda_pseudonymize_frontend/dispatches \
-            -d '{"event_type":"backend-release"}'

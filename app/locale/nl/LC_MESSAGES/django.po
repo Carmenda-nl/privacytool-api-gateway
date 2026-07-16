@@ -18,110 +18,142 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: .\api\utils\logger.py:55
+#: .\api\views\sse_views.py:41
 #, python-format
 msgid "processed %(processed)s/%(total)s rows"
 msgstr "%(processed)s/%(total)s regels verwerkt"
 
-#: .\api\serializers.py:204
+#: .\api\serializers.py:183
+msgid "A POST request must include an input_file. Use PUT to update an existing job."
+msgstr "Een POST-verzoek moet een input_file bevatten. Gebruik PUT om een bestaande taak bij te werken."
+
+#: .\api\serializers.py:216
 #, python-format
 msgid "%(count)d hour"
 msgid_plural "%(count)d hours"
 msgstr[0] "%(count)d uur"
 msgstr[1] "%(count)d uur"
 
-#: .\api\serializers.py:206
+#: .\api\serializers.py:218
 #, python-format
 msgid "%(count)d minute"
 msgid_plural "%(count)d minutes"
 msgstr[0] "%(count)d minuut"
 msgstr[1] "%(count)d minuten"
 
-#: .\api\serializers.py:208
+#: .\api\serializers.py:220
 #, python-format
 msgid "%(count)d second"
 msgid_plural "%(count)d seconds"
 msgstr[0] "%(count)d seconde"
 msgstr[1] "%(count)d seconden"
 
-#: .\api\serializers.py:210
+#: .\api\serializers.py:222
 msgid "and"
 msgstr "en"
 
-#: .\api\utils\file_handling.py:176
+#: .\api\utils\packaging.py:55
 #, python-brace-format
 msgid "Yes, Carmenda may contact me with questions about improving the Privacytool.\nConfirmed during pseudonimisation of the file: {filename}"
 msgstr "Ja, Carmenda mag mij benaderen met vragen over het verbeteren van de Privacytool.\nBevestigd tijdens de pseudonimisering van het bestand: {filename}"
 
-#: .\api\utils\validators.py:35
+#: .\api\validators.py:32
 #, python-format
 msgid "Column \"%(col_value)s\" not found in input file, available columns: %(available)s"
 msgstr "Kolom \"%(col_value)s\" niet gevonden in invoerbestand, beschikbare kolommen: %(available)s"
 
-#: .\api\utils\validators.py:48
+#: .\api\validators.py:45
 #, python-format
 msgid "Datakey file must contain columns: %(columns)s."
 msgstr "Datakey-bestand moet de volgende kolommen bevatten: %(columns)s."
 
-#: .\api\utils\validators.py:70
+#: .\api\validators.py:68
 msgid "File must contain a header row"
 msgstr "Bestand moet een headerregel bevatten"
 
-#: .\api\utils\validators.py:76
+#: .\api\validators.py:74
 msgid "File header is empty or invalid"
 msgstr "Bestandsheader is leeg of ongeldig"
 
-#: .\api\utils\validators.py:88
+#: .\api\validators.py:86
 msgid "File must contain at least 1 data row."
 msgstr "Bestand moet minimaal 1 dataregel bevatten."
 
-#: .\api\utils\validators.py:92
+#: .\api\validators.py:90
 msgid "This appears to be a datakey file (columns: Clientnaam, Synoniemen, Code)"
 msgstr "Dit lijkt een datakey-bestand te zijn (kolommen: Clientnaam, Synoniemen, Code)"
 
-#: .\api\utils\validators.py:111
+#: .\api\validators.py:108
 msgid "Excel file must contain at least 1 data row."
 msgstr "Excel-bestand moet minimaal 1 dataregel bevatten."
 
-#: .\api\utils\validators.py:134
+#: .\api\validators.py:127
 msgid "Datakey must be a CSV file."
 msgstr "Datakey moet een CSV-bestand zijn."
 
-#: .\api\utils\validators.py:145 .\api\utils\validators.py:177
+#: .\api\validators.py:138 .\api\validators.py:170
 msgid "Unsupported file extension."
 msgstr "Niet-ondersteunde bestandsextensie."
 
-#: .\api\utils\validators.py:194
+#: .\api\validators.py:187
 msgid "Input columns must be a string"
 msgstr "Invoerkolommen moeten een tekstreeks zijn"
 
-#: .\api\utils\validators.py:206
+#: .\api\validators.py:199
 #, python-format
 msgid "Field '%(field)s' does not follow the format 'key=value'"
 msgstr "Veld '%(field)s' volgt niet het formaat 'sleutel=waarde'"
 
-#: .\api\utils\validators.py:215
+#: .\api\validators.py:208
 msgid "A 'report' key must be present (report=value)"
 msgstr "De sleutel 'report' moet aanwezig zijn (report=waarde)"
 
-#: .\main\middleware.py:66
+#: .\main\middleware.py:81
 #, python-brace-format
 msgid "Can not open the file: {path}"
 msgstr "Kan het bestand niet openen: {path}"
 
-#: .\main\middleware.py:70
+#: .\main\middleware.py:85
 #, python-brace-format
 msgid "File {path} not found."
 msgstr "Bestand {path} niet gevonden."
 
-#: .\main\settings.py:154
+#: .\main\settings.py:160
 msgid "English"
 msgstr "Engels"
 
-#: .\main\settings.py:155
+#: .\main\settings.py:161
 msgid "Dutch"
 msgstr "Nederlands"
 
-#: .\api\views\sse_views.py:84 .\api\views\sse_views.py:87
+#: .\api\views\sse_views.py:63
 msgid "processing"
 msgstr "verwerking"
+
+#: .\api\views\sse_views.py:38
+msgid "start"
+msgstr "opstarten"
+
+#: .\api\views\sse_views.py:38
+msgid "file loaded"
+msgstr "bestand ingeladen"
+
+#: .\api\views\sse_views.py:38
+msgid "initializing model"
+msgstr "model initialiseren"
+
+#: .\api\views\sse_views.py:38
+msgid "initializing tables"
+msgstr "tabellen initialiseren"
+
+#: .\api\views\sse_views.py:38
+msgid "initializing name detection"
+msgstr "naam detectie initialiseren"
+
+#: .\api\views\sse_views.py:38
+msgid "pseudonymize"
+msgstr "pseudonimiseren"
+
+#: .\api\views\sse_views.py:38
+msgid "done"
+msgstr "gereed"
