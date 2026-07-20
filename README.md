@@ -6,7 +6,7 @@
 [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Tests](https://github.com/Carmenda-nl/privacytool-api-gateway/actions/workflows/test-develop.yml/badge.svg?branch=develop)](https://github.com/Carmenda-nl/privacytool-api-gateway/actions/workflows/test-develop.yml)
-[![License](https://img.shields.io/badge/license-GPL--3.0-blue)](https://www.gnu.org/licenses/gpl-3.0.html)
+[![License](https://img.shields.io/badge/license-PolyForm--Noncommercial--1.0.0-blue)](https://polyformproject.org/licenses/noncommercial/1.0.0)
 
 
 **Privacytool - API-Gateway** is an API solution designed to manage and route pseudonymization requests to the 
@@ -49,7 +49,7 @@ from the underlying pseudonymization logic.
 
 ## License
 
-This program is distributed under the terms of the GNU General Public License: GPL-3.0-or-later.  
+This program is distributed under the terms of the [PolyForm Noncommercial License 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0).  
 © 2026 Carmenda. All rights reserved.
 
 ## Contact
