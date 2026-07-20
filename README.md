@@ -106,10 +106,9 @@ Detach without stopping the container with `Ctrl+P, Ctrl+Q` (plain `Ctrl+C` stop
 
 ### API Documentation
 
-Once the backend is running, you can access:
-
-- **API Documentation**: `http://localhost:8000/docs/` (Swagger UI)
-- **API Schema**: `http://localhost:8000/schema/` (OpenAPI schema)
+There is no OpenAPI/Swagger schema. The gateway runs with `DEBUG=True` by default in this
+compose setup, which enables DRF's built-in browsable API directly on the endpoints — start
+at `http://localhost:8000/api/` to explore what's available.
 
 ### Important Notes
 
@@ -183,3 +182,10 @@ python manage.py runserver
 ```
 
 The API will be available at `http://127.0.0.1:8000/`
+
+### Step 5: Testing with Bruno
+
+There is no committed [Bruno](https://www.usebruno.com/) collection and no OpenAPI schema to
+import it from. With `DEBUG=True`, DRF's browsable API at `http://127.0.0.1:8000/api/` lists all
+available endpoints — use it to explore the API and add matching requests to Bruno by hand.
+Afterwards, add a `local` environment with a `baseUrl` variable pointing at `http://127.0.0.1:8000`.
