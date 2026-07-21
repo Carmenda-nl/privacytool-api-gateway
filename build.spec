@@ -66,6 +66,7 @@ datas.append((str(rest_framework_path), 'rest_framework'))
 binaries = []
 hiddenimports = []
 hiddenimports += collect_submodules('polars')
+hiddenimports += collect_submodules('whitenoise')
 
 tmp_ret = collect_all('rest_framework')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]

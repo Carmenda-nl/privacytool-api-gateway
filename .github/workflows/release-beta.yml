@@ -22,6 +22,6 @@ jobs:
       working-directory: app
       build-output-name: api-gateway
       artifact-name: api-gateway-windows
-      zip-prefix: Privacytool_api-gateway_win
+      zip-prefix: privacytool_api-gateway_win
       version-file: app/main/_version.py
     secrets: inherit
