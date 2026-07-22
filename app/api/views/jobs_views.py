@@ -73,7 +73,7 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
     def _reset_job(self, request: Request, job: DeidentificationJob, *, input_uploaded: bool) -> None:
         """Reset the job's output and related fields."""
         if job.status == 'processing':
-            cancel_engine(str(job.job_id))
+            cancel_engine(job)
 
         gc.collect()
         job.reset_output()
@@ -152,7 +152,7 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
             logger.info('Job "%s" Cancelling running job before deletion', instance.job_id)
 
             try:
-                cancel_engine(str(instance.job_id))
+                cancel_engine(instance)
 
                 instance.status = 'cancelled'
                 instance.error_message = 'Job cancelled before deletion'
@@ -182,7 +182,7 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
             return Response({'message': 'Job not running', 'status': job.status}, status=status.HTTP_200_OK)
 
         try:
-            cancel_engine(str(job.job_id))
+            cancel_engine(job)
             job.status = 'cancelled'
             job.error_message = 'Cancellation requested'
             job.save()
@@ -234,7 +234,7 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
 
             datakey = Path(job.datakey.name).name if job.datakey else None
 
-            submit_job(str(job.job_id), input_file, input_cols, datakey)
+            submit_job(job, input_file, input_cols, datakey)
             progress_url = request.build_absolute_uri(f'/api/v2/jobs/{job.job_id}/progress/')
             return Response(
                 {

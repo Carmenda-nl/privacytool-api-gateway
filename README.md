@@ -18,6 +18,7 @@ decoupling the API layer from the underlying pseudonymization logic.
 
 - **REST API**: HTTP endpoints for submitting and managing pseudonymization requests
 - **CSV Sanitization**: Uploaded CSV files are sanitized and normalized (encoding, HTML stripping, quote handling)
+- **Multiple Engines**: Pick which engine handles each job
 - **Asynchronous Processing**: Job-based processing with real-time progress tracking via Server-Sent Events (SSE)
 - **Job Management**: Cancel running jobs and track processing status through the API
 - **API Documentation**: Automatic OpenAPI/Swagger documentation for easy integration
@@ -47,6 +48,12 @@ The API-Gateway receives pseudonymization requests and routes them to the config
 It manages the job lifecycle, tracks progress, and returns results to the caller - keeping the API layer fully decoupled 
 from the underlying pseudonymization logic.
 
+### Engine Selection
+
+The gateway can be configured with multiple engines (see `ENGINES` below). Each job stores which engine it should run on.
+
+All engine calls for a job (submit, progress, cancel) are routed to that job's stored engine.
+
 ## License
 
 This program is distributed under the terms of the [PolyForm Noncommercial License 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0).  
@@ -60,14 +67,14 @@ For questions or support, please contact us at [support@carmenda.nl](mailto:supp
 
 ## Deployment (Docker Compose)
 
-The gateway runs alongside the [deduce engine](../carmenda-deduce-engine), which is built from a
-local checkout as a sibling directory next to this repository. Compose builds and runs both
-services, wires them together over an internal network, and shares the data directory between
-them (the gateway forwards jobs to the engine by absolute path, so both mount the same volume).
+The gateway runs alongside multiple engines, each built from a local checkout as a sibling directory
+next to this repository. Compose builds and runs all services, wires them together over an
+internal network, and shares the data directory between them (the gateway forwards jobs to the
+engines by absolute path, so all three mount the same volume).
 
 ### Configure environment variables
 
-The gateway and engine authenticate over a shared machine-to-machine secret, and the gateway
+The gateway and engines authenticate over a shared machine-to-machine secret, and the gateway
 needs its own Django secret key. Both are read from `deployment/.env`:
 
 ```bash
@@ -85,21 +92,21 @@ SECRET_KEY=<your-django-secret-key>
 docker compose up -d --build
 ```
 
-The API will be available at `http://localhost:8000/`. The engine is reachable only on the
-internal compose network (it is not published to the host).
+The API will be available at `http://localhost:8000/`. The engines are reachable only on the
+internal compose network (they are not published to the host).
 
 > **Note:** Set `DEBUG=False` for production environments.
 
-### Viewing the engine's progress bar
+### Viewing the deduce engine's progress bar
 
-The engine renders its processing progress as a live, redrawing Rich progress bar.
+The deduce engine renders its processing progress as a live, redrawing Rich progress bar.
 Docker Compose's combined log output prefixes and line-buffers each service's output, 
 which breaks that live redraw — the bar will appear frozen or
-garbled there. The engine container has a fixed name (`engine`) so you can attach to it
-directly instead, which shows the bar exactly as `docker run -it` would:
+garbled there. The engine container has a fixed name (`carmenda-deduce-engine`) so you can attach
+to it directly instead, which shows the bar exactly as `docker run -it` would:
 
 ```bash
-docker attach engine
+docker attach carmenda-deduce-engine
 ```
 
 Detach without stopping the container with `Ctrl+P, Ctrl+Q` (plain `Ctrl+C` stops it).
@@ -163,15 +170,17 @@ LOG_LEVEL=INFO
 SECRET_KEY=your-secret-key-here
 CSRF_TRUSTED_ORIGINS=http://127.0.0.1
 
-ENGINE_URL=http://127.0.0.1:8001
-ENGINE_M2M_HASH=
+ENGINES={"default-engine": {"url": "http://127.0.0.1", "port": "8001", "m2m_hash": ""}}
 ```
 
 > **Note:** Replace `your-secret-key-here` with a secure random string. For production environments, 
 ensure `DEBUG=False` and use appropriate CSRF trusted origins.
 
-> **Note:** `ENGINE_M2M_HASH` is the shared secret sent as the `X-M2M-Key` header on every engine call.
-It must match the engine's `M2M_HASH`. A mismatch makes the engine reject all jobs with `401`.
+> **Note:** `ENGINES` is a JSON object mapping an engine ID to its connection details (`url`, `port`,
+and `m2m_hash`). `m2m_hash` is the shared secret sent as the `X-M2M-Key` header on every call to that
+engine - it must match the engine's own `M2M_HASH`, or the engine rejects jobs with `401`. Add more
+entries to make additional engines selectable; if `ENGINES` is omitted, it defaults to a single
+`default-engine` at `127.0.0.1:8001`.
 
 ### Step 4: Run the Server
 

@@ -19,13 +19,21 @@ from api.models import DeidentificationJob
 logger = logging.getLogger('api-gateway')
 
 
-def engine_header() -> dict[str, str]:
+def engine_url(engine: str, path: str) -> str:
+    """Build a full URL to the given engine's API path."""
+    config = settings.ENGINES[engine]
+    return f"{config['url']}:{config['port']}{path}"
+
+
+def engine_header(engine: str) -> dict[str, str]:
     """Auth header for engine calls: the shared M2M secret."""
-    return {'X-M2M-Key': settings.ENGINE_M2M_HASH} if settings.ENGINE_M2M_HASH else {}
+    m2m_hash = settings.ENGINES[engine].get('m2m_hash')
+    return {'X-M2M-Key': m2m_hash} if m2m_hash else {}
 
 
-def submit_job(job_id: str, input_file: str, input_cols: str, datakey: str | None) -> None:
+def submit_job(job: DeidentificationJob, input_file: str, input_cols: str, datakey: str | None) -> None:
     """Forward a job to the engine over HTTP (shared paths, no file transfer)."""
+    job_id = str(job.job_id)
     form: dict = {
         'file': str(Path(settings.MEDIA_ROOT) / 'input' / input_file),
         'cols': input_cols,
@@ -35,31 +43,36 @@ def submit_job(job_id: str, input_file: str, input_cols: str, datakey: str | Non
     if datakey:
         form['datakey'] = Path(datakey).name
 
-    httpx.post(f'{settings.ENGINE_URL}/api/process', data=form, headers=engine_header(), timeout=30).raise_for_status()
-    logger.debug('Job "%s" submitted to engine', job_id)
+    url = engine_url(job.engine, '/api/process')
+    httpx.post(url, data=form, headers=engine_header(job.engine), timeout=30).raise_for_status()
+    logger.debug('Job "%s" submitted to engine "%s"', job_id, job.engine)
 
 
-def cancel_engine(job_id: str) -> None:
+def cancel_engine(job: DeidentificationJob) -> None:
     """Ask the engine to stop the running job."""
+    job_id = str(job.job_id)
     try:
-        httpx.delete(f'{settings.ENGINE_URL}/api/process', headers=engine_header(), timeout=10)
+        url = engine_url(job.engine, '/api/process')
+        httpx.delete(url, headers=engine_header(job.engine), timeout=10)
         logger.info('Job "%s" cancellation forwarded to engine', job_id)
     except httpx.HTTPError:
         logger.warning('Job "%s": failed to cancel to engine', job_id)
 
 
-def _engine_get(path: str, job_id: str) -> httpx.Response | None:
+def _engine_get(job: DeidentificationJob, path: str) -> httpx.Response | None:
     """Engine GET endpoint, or None on any transport error."""
+    job_id = str(job.job_id)
     try:
-        return httpx.get(f'{settings.ENGINE_URL}{path}', params={'job_id': job_id}, headers=engine_header(), timeout=10)
+        url = engine_url(job.engine, path)
+        return httpx.get(url, params={'job_id': job_id}, headers=engine_header(job.engine), timeout=10)
     except httpx.HTTPError as exception:
         logger.warning('Job "%s": engine GET %s failed: %s', job_id, path, exception)
         return None
 
 
-def _engine_progress(job_id: str) -> dict | None:
+def _engine_progress(job: DeidentificationJob) -> dict | None:
     """Fetch the engine's live progress for a still-running job, or None on any hiccup."""
-    response = _engine_get('/api/progress', job_id)
+    response = _engine_get(job, '/api/progress')
     if response is None or response.status_code != httpx.codes.OK:
         return None
 
@@ -122,8 +135,7 @@ def sync_status(job: DeidentificationJob) -> dict | None:
     if job.status != 'processing':
         return None
 
-    job_id = str(job.job_id)
-    response = _engine_get('/api/process', job_id)
+    response = _engine_get(job, '/api/process')
 
     # engine unreachable -> leave processing, retry next tick
     if response is None:
@@ -131,7 +143,7 @@ def sync_status(job: DeidentificationJob) -> dict | None:
 
     match response.status_code:
         case httpx.codes.CONFLICT:
-            return _engine_progress(job_id)
+            return _engine_progress(job)
         case httpx.codes.OK:
             _apply_completion(job, response.json())
         case httpx.codes.INTERNAL_SERVER_ERROR:
