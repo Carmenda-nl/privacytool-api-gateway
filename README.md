@@ -170,7 +170,7 @@ LOG_LEVEL=INFO
 SECRET_KEY=your-secret-key-here
 CSRF_TRUSTED_ORIGINS=http://127.0.0.1
 
-ENGINES={"default-engine": {"url": "http://127.0.0.1", "port": "8001", "m2m_hash": ""}}
+ENGINES={"carmenda-deduce-engine": {"url": "http://127.0.0.1", "port": "8001", "m2m_hash": "unsecure_1"}, "deidentify-engine": {"url": "http://127.0.0.1", "port": "8002", "m2m_hash": "unsecure_2"}}
 ```
 
 > **Note:** Replace `your-secret-key-here` with a secure random string. For production environments, 
