@@ -51,7 +51,6 @@ from the underlying pseudonymization logic.
 ### Engine Selection
 
 The gateway can be configured with multiple engines (see `ENGINES` below). Each job stores which engine it should run on.
-
 All engine calls for a job (submit, progress, cancel) are routed to that job's stored engine.
 
 ## License
@@ -101,34 +100,32 @@ internal compose network (they are not published to the host).
 
 The deduce engine renders its processing progress as a live, redrawing Rich progress bar.
 Docker Compose's combined log output prefixes and line-buffers each service's output, 
-which breaks that live redraw — the bar will appear frozen or
-garbled there. The engine container has a fixed name (`carmenda-deduce-engine`) so you can attach
-to it directly instead, which shows the bar exactly as `docker run -it` would:
+which breaks that live redraw — the bar will appear frozen or garbled there.
 
-```bash
-docker attach carmenda-deduce-engine
-```
-
-Detach without stopping the container with `Ctrl+P, Ctrl+Q` (plain `Ctrl+C` stops it).
+> **Note:** `docker compose logs` cannot show this bar at all — it is a Compose limitation,
+> not a bug. You must attach to the engine container directly to see it render:
+>
+> ```bash
+> docker attach carmenda-deduce-engine
+> ```
+>
+> Detach without stopping the container with `Ctrl+P, Ctrl+Q` (plain `Ctrl+C` stops it).
+>
+> If multiple engines are configured (see `ENGINES` below), attach to the container of the
+> engine that job was actually submitted to — attaching to the wrong engine's container shows
+> nothing, since only the engine handling the job renders a bar.
 
 ### API Documentation
 
 There is no OpenAPI/Swagger schema. The gateway runs with `DEBUG=True` by default in this
 compose setup, which enables DRF's built-in browsable API directly on the endpoints — start
-at `http://localhost:8000/api/` to explore what's available.
+at `http://127.0.0.1:8000` to explore what's available.
 
 ### Important Notes
 
 - **Port**: The backend runs on port 8000 by default
-- **API Endpoints**: All API endpoints are documented at `/docs/` when the server is running
+- **API Endpoints**: All API endpoints are available trough `http://127.0.0.1:8000` when the server is running
 - **Logs**: Container logs will show Django server output and any errors in the terminal
-
-### Troubleshooting
-
-If you encounter issues:
-
-1. Check that port 8000 is not already in use
-2. Verify that Docker has sufficient resources allocated
 
 ---
 
