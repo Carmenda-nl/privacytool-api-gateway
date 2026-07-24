@@ -1,6 +1,6 @@
 # ------------------------------------------------------------------------------------------------ #
 # Copyright (c) 2026 Carmenda. All rights reserved.                                                #
-# This program is distributed under the terms of the GNU General Public License: GPL-3.0-or-later  #
+# This program is distributed under the terms of the PolyForm Noncommercial License 1.0.0          #
 # ------------------------------------------------------------------------------------------------ #
 
 """Settings for the Django project."""
@@ -59,6 +59,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.locale.LocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -174,7 +175,9 @@ MEDIA_ROOT = BASE_DIR / 'data'
 
 # Static files
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'static'
+
+# Serve static files straight from the app directories (no collectstatic needed)
+WHITENOISE_USE_FINDERS = True
 
 
 # Default primary key field type

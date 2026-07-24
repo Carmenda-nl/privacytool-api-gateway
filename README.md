@@ -2,11 +2,11 @@
 
 [![Python](https://img.shields.io/badge/python-3.14-blue)](https://www.python.org/downloads/release/python-3146/)
 [![API](https://img.shields.io/badge/api-REST-orange)](https://www.django-rest-framework.org/)
-[![Django](https://img.shields.io/badge/django-5.2-green)](https://docs.djangoproject.com/en/5.2/)
+[![Django](https://img.shields.io/badge/django-6.0-green)](https://docs.djangoproject.com/en/6.0/)
 [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Tests](https://github.com/Carmenda-nl/privacytool-api-gateway/actions/workflows/test-develop.yml/badge.svg?branch=develop)](https://github.com/Carmenda-nl/privacytool-api-gateway/actions/workflows/test-develop.yml)
-[![License](https://img.shields.io/badge/license-GPL--3.0-blue)](https://www.gnu.org/licenses/gpl-3.0.html)
+[![License](https://img.shields.io/badge/license-PolyForm--Noncommercial--1.0.0-blue)](https://polyformproject.org/licenses/noncommercial/1.0.0)
 
 
 **Privacytool - API-Gateway** is an API solution designed to manage and route pseudonymization requests to the 
@@ -49,7 +49,7 @@ from the underlying pseudonymization logic.
 
 ## License
 
-This program is distributed under the terms of the GNU General Public License: GPL-3.0-or-later.  
+This program is distributed under the terms of the [PolyForm Noncommercial License 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0).  
 © 2026 Carmenda. All rights reserved.
 
 ## Contact
@@ -106,10 +106,9 @@ Detach without stopping the container with `Ctrl+P, Ctrl+Q` (plain `Ctrl+C` stop
 
 ### API Documentation
 
-Once the backend is running, you can access:
-
-- **API Documentation**: `http://localhost:8000/docs/` (Swagger UI)
-- **API Schema**: `http://localhost:8000/schema/` (OpenAPI schema)
+There is no OpenAPI/Swagger schema. The gateway runs with `DEBUG=True` by default in this
+compose setup, which enables DRF's built-in browsable API directly on the endpoints — start
+at `http://localhost:8000/api/` to explore what's available.
 
 ### Important Notes
 
@@ -183,3 +182,10 @@ python manage.py runserver
 ```
 
 The API will be available at `http://127.0.0.1:8000/`
+
+### Step 5: Testing with Bruno
+
+There is no committed [Bruno](https://www.usebruno.com/) collection and no OpenAPI schema to
+import it from. With `DEBUG=True`, DRF's browsable API at `http://127.0.0.1:8000/api/` lists all
+available endpoints — use it to explore the API and add matching requests to Bruno by hand.
+Afterwards, add a `local` environment with a `baseUrl` variable pointing at `http://127.0.0.1:8000`.

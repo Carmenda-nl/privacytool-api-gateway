@@ -1,6 +1,6 @@
 # ------------------------------------------------------------------------------------------------ #
 # Copyright (c) 2026 Carmenda. All rights reserved.                                                #
-# This program is distributed under the terms of the GNU General Public License: GPL-3.0-or-later  #
+# This program is distributed under the terms of the PolyForm Noncommercial License 1.0.0          #
 # ------------------------------------------------------------------------------------------------ #
 
 """Django logging configuration.
@@ -60,9 +60,10 @@ LOGGING = {
         },
         'debug_file': {
             'level': 'DEBUG',
-            'class': 'logging.FileHandler',
+            'class': 'logging.handlers.RotatingFileHandler',
             'filename': str(logs_dir / 'debug.log'),
-            'mode': 'w',
+            'maxBytes': 2 * 1024 * 1024,
+            'backupCount': 3,
             'encoding': 'utf-8',
             'formatter': 'verbose',
         },
@@ -73,17 +74,17 @@ LOGGING = {
     },
     'loggers': {
         'django': {
-            'handlers': ['console'],
+            'handlers': ['console', 'debug_file'],
             'level': 'INFO',
             'propagate': False,
         },
         'django.request': {
-            'handlers': ['console'],
+            'handlers': ['console', 'debug_file'],
             'level': 'ERROR',
             'propagate': False,
         },
         'django.db.backends': {
-            'handlers': ['console'],
+            'handlers': ['console', 'debug_file'],
             'level': 'INFO',
             'propagate': False,
         },

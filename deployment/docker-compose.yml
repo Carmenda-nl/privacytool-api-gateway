@@ -1,6 +1,6 @@
 # ------------------------------------------------------------------------------------------------ #
 # Copyright (c) 2026 Carmenda. All rights reserved.                                                #
-# This program is distributed under the terms of the GNU General Public License: GPL-3.0-or-later  #
+# This program is distributed under the terms of the PolyForm Noncommercial License 1.0.0          #
 # ------------------------------------------------------------------------------------------------ #
 
 name: privacytool
@@ -31,7 +31,7 @@ services:
       context: ..
       dockerfile: deployment/Dockerfile
     environment:
-      DEBUG: False
+      DEBUG: True
       LOG_LEVEL: INFO
       SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY in deployment/.env}
       ENGINE_URL: http://engine:8001

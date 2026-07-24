@@ -1,6 +1,6 @@
 # ------------------------------------------------------------------------------------------------ #
 # Copyright (c) 2026 Carmenda. All rights reserved.                                                #
-# This program is distributed under the terms of the GNU General Public License: GPL-3.0-or-later  #
+# This program is distributed under the terms of the PolyForm Noncommercial License 1.0.0          #
 # ------------------------------------------------------------------------------------------------ #
 
 """Tests for CSV handling utilities."""
@@ -203,10 +203,7 @@ class TestSanitizeCsv:
             'header': 'naam;stad',
         }
 
-        output_folder = tmp_path / 'output'
-        output_folder.mkdir()
-
-        sanitized_path = _sanitize_csv(file, properties, str(output_folder))
+        sanitized_path = _sanitize_csv(file, properties)
         sanitized_file = Path(sanitized_path)
 
         assert sanitized_file.exists()
@@ -224,10 +221,7 @@ class TestSanitizeCsv:
             'header': 'name;text',
         }
 
-        output_folder = tmp_path / 'output'
-        output_folder.mkdir()
-
-        sanitized_path = _sanitize_csv(file, properties, str(output_folder))
+        sanitized_path = _sanitize_csv(file, properties)
         content = Path(sanitized_path).read_text(encoding='utf-8')
 
         assert 'fish & chips' in content
@@ -244,14 +238,48 @@ class TestSanitizeCsv:
             'header': 'name,text',
         }
 
-        output_folder = tmp_path / 'output'
-        output_folder.mkdir()
-
-        sanitized_path = _sanitize_csv(file, properties, str(output_folder))
+        sanitized_path = _sanitize_csv(file, properties)
         content = Path(sanitized_path).read_text(encoding='utf-8')
 
         # With comma delimiter, HTML should NOT be unescaped
         assert 'fish &amp; chips' in content
+
+    def test_no_error_file_when_no_decode_errors(self, tmp_path: Path) -> None:
+        """No `_skipped_lines.csv` is written when the input decodes cleanly."""
+        file = tmp_path / 'test.csv'
+        file.write_text('name,age\nAlice,30', encoding='utf-8')
+
+        properties = {'encoding': 'utf-8', 'delimiter': ',', 'header': 'name,age'}
+
+        _sanitize_csv(file, properties)
+
+        assert list(tmp_path.glob('*_skipped_lines.csv')) == []
+
+    def test_stale_error_file_removed_on_clean_upload(self, tmp_path: Path) -> None:
+        """A leftover `_skipped_lines.csv` from a previous upload is removed when the input decodes cleanly."""
+        file = tmp_path / 'test.csv'
+        file.write_text('name,age\nAlice,30', encoding='utf-8')
+        stale = tmp_path / 'test_skipped_lines.csv'
+        stale.write_text('name,age\nold,error', encoding='utf-8')
+
+        properties = {'encoding': 'utf-8', 'delimiter': ',', 'header': 'name,age'}
+
+        _sanitize_csv(file, properties)
+
+        assert not stale.exists()
+
+    def test_error_file_written_on_decode_errors(self, tmp_path: Path) -> None:
+        """A `_skipped_lines.csv` is written for lines that fail to decode."""
+        file = tmp_path / 'test.csv'
+        file.write_bytes(b'name,age\nAlice,30\n\xff\xfe,40\n')
+
+        properties = {'encoding': 'utf-8', 'delimiter': ',', 'header': 'name,age'}
+
+        _sanitize_csv(file, properties)
+
+        error_files = list(tmp_path.glob('*_skipped_lines.csv'))
+        assert error_files == [tmp_path / 'test_skipped_lines.csv']
+        assert 'name,age' in error_files[0].read_text(encoding='utf-8')
 
 
 # ----------------------------- NORMALIZE CSV TESTS ----------------------------- #

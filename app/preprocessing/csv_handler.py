@@ -1,14 +1,16 @@
 # ------------------------------------------------------------------------------------------------ #
 # Copyright (c) 2026 Carmenda. All rights reserved.                                                #
-# This program is distributed under the terms of the GNU General Public License: GPL-3.0-or-later  #
+# This program is distributed under the terms of the PolyForm Noncommercial License 1.0.0          #
 # ------------------------------------------------------------------------------------------------ #
 
 """CSV file conversion and sanitization utilities."""
 
 from __future__ import annotations
 
+import contextlib
 import csv
 import html
+import itertools
 import logging
 import re
 import shutil
@@ -96,29 +98,7 @@ def detect_csv_properties(file_path: Path) -> dict[str, str]:
     return {'header': header, 'encoding': encoding, 'delimiter': delimiter}
 
 
-def _collect_errors(file_path: Path, error_temp: str, output_folder: str) -> None:
-    """Collect encoding errors and write them to a separate CSV file."""
-    error_file = Path(error_temp)
-    error_count = sum(1 for _ in error_file.open(encoding='utf-8')) - 1
-
-    if error_count > 0:
-        try:
-            input_base = Path(output_folder).parent / 'input'
-            parent = file_path.parent.relative_to(input_base)
-            target_dir = Path(output_folder) / parent
-        except ValueError:
-            target_dir = Path(output_folder)
-
-        target_dir.mkdir(parents=True, exist_ok=True)
-        error_csv = target_dir / f'{file_path.stem}_skipped_lines.csv'
-        shutil.move(error_temp, error_csv)
-        logger.warning('%d errors in rows found.', error_count)
-    else:
-        error_file.unlink()
-        logger.info('No errors in rows found.')
-
-
-def _sanitize_csv(file_path: Path, properties: dict[str, str], output_folder: str) -> str:
+def _sanitize_csv(file_path: Path, properties: dict[str, str]) -> str:
     """Convert CSV to UTF-8 and sanitize content.
 
     When the delimiter is `;`, unescape HTML character entities while replacing
@@ -127,22 +107,18 @@ def _sanitize_csv(file_path: Path, properties: dict[str, str], output_folder: st
     header, encoding, delimiter = properties['header'], properties['encoding'], properties['delimiter']
     replace_html = delimiter == ';'
 
+    error_temp = None
+    error_count = 0
+
     with (
+        contextlib.ExitStack() as stack,
         file_path.open('rb') as file,
         tempfile.NamedTemporaryFile('w', encoding='utf-8', newline='', delete=False) as temp_file,
-        tempfile.NamedTemporaryFile('w', encoding='utf-8', newline='', delete=False, suffix='.csv') as error_temp,
     ):
         chunk_size = 8 * 1024 * 1024
         buffer = b''
 
-        # Add a header to the error file
-        error_temp.write(header.replace(delimiter, ',') + '\n')
-
-        while True:
-            chunk = file.read(chunk_size)
-            if not chunk and not buffer:
-                break
-
+        for chunk in itertools.chain(iter(lambda: file.read(chunk_size), b''), (b'',)):
             buffer += chunk
 
             try:
@@ -153,9 +129,19 @@ def _sanitize_csv(file_path: Path, properties: dict[str, str], output_folder: st
                         # handle errors line by line if the chunk contains invalid sequences
                         line = raw_line.decode(encoding)
                     except UnicodeDecodeError, LookupError:
-                        error_line = raw_line.decode(encoding, errors='replace')
-                        error_line = error_line.replace(delimiter, ',')
+                        if not error_temp:
+                            # Lazily create the error file only once an actual decode error occurs,
+                            # since most uploads have none and never need it.
+                            error_temp = stack.enter_context(
+                                tempfile.NamedTemporaryFile(
+                                    'w', encoding='utf-8', newline='', delete=False, suffix='.csv'
+                                ),
+                            )
+                            error_temp.write(header.replace(delimiter, ',') + '\n')
+
+                        error_line = raw_line.decode(encoding, errors='replace').replace(delimiter, ',')
                         error_temp.write(error_line + '\n')
+                        error_count += 1
                         continue
 
                     if replace_html:
@@ -164,7 +150,6 @@ def _sanitize_csv(file_path: Path, properties: dict[str, str], output_folder: st
                 buffer = b''
                 continue
 
-            # Check if the buffer is safe to flush (even number of quotes = not inside a quoted field)
             quote_count = text.count('"') - text.count('\\"')
             if not chunk or quote_count % 2 == 0:
                 if replace_html:
@@ -172,7 +157,13 @@ def _sanitize_csv(file_path: Path, properties: dict[str, str], output_folder: st
                 temp_file.write(text)
                 buffer = b''
 
-    _collect_errors(file_path, error_temp.name, output_folder)
+    error_csv = file_path.parent / f'{file_path.stem}_skipped_lines.csv'
+    if error_temp:
+        shutil.move(error_temp.name, error_csv)
+        logger.warning('%d errors in rows found.', error_count)
+    else:
+        error_csv.unlink(missing_ok=True)
+        logger.info('No errors in rows found.')
 
     return temp_file.name
 
@@ -203,12 +194,12 @@ def _normalize_csv(file_path: Path, properties: dict[str, str]) -> str:
     return csv_temp.name
 
 
-def load_csv(file_path: Path, output_folder: str, properties: dict[str, str] | None = None) -> None:
+def load_csv(file_path: Path, properties: dict[str, str] | None = None) -> None:
     """Sanitize and normalize a CSV file in place (UTF-8, comma-delimited, no empty rows)."""
     if properties is None:
         properties = detect_csv_properties(file_path)
 
-    sanitized_csv = _sanitize_csv(file_path, properties, output_folder)
+    sanitized_csv = _sanitize_csv(file_path, properties)
     normalized_csv = _normalize_csv(Path(sanitized_csv), properties)
 
     Path(sanitized_csv).unlink(missing_ok=True)

@@ -1,6 +1,6 @@
 # ------------------------------------------------------------------------------------------------ #
 # Copyright (c) 2026 Carmenda. All rights reserved.                                                #
-# This program is distributed under the terms of the GNU General Public License: GPL-3.0-or-later  #
+# This program is distributed under the terms of the PolyForm Noncommercial License 1.0.0          #
 # ------------------------------------------------------------------------------------------------ #
 
 """ViewSet for managing deidentification jobs."""
@@ -117,6 +117,8 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
 
         if input_changed and old_input and job.input_file.name != old_input:
             job.input_file.storage.delete(old_input)
+            old_path = Path(old_input)
+            job.input_file.storage.delete(str(old_path.with_name(f'{old_path.stem}_skipped_lines.csv')))
 
         if (datakey_changed or input_uploaded) and old_datakey:
             job.datakey.storage.delete(old_datakey)

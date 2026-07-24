@@ -41,10 +41,6 @@ excluded_items = {
     'pyproject.toml',
 }
 
-env_file = app_path / '.env'
-if env_file.exists():
-    datas.append((str(env_file), 'app'))
-
 for root, dirs, files in os.walk(app_path):
     dirs[:] = [directory for directory in dirs if directory not in excluded_items and not directory.startswith('.')]
 
@@ -70,6 +66,7 @@ datas.append((str(rest_framework_path), 'rest_framework'))
 binaries = []
 hiddenimports = []
 hiddenimports += collect_submodules('polars')
+hiddenimports += collect_submodules('whitenoise')
 
 tmp_ret = collect_all('rest_framework')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
