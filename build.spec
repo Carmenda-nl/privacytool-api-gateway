@@ -123,7 +123,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='api-gateway',
+    name='privacytool-api-gateway',
     debug=False,
     bootloader_ignore_signals=False,
     strip=True,
@@ -138,4 +138,4 @@ exe = EXE(
     entitlements_file=None,
 )
 
-coll = COLLECT(exe, a.binaries, a.datas, a.scripts, strip=False, upx=True, upx_exclude=[], name='api-gateway')
+coll = COLLECT(exe, a.binaries, a.datas, a.scripts, strip=False, upx=True, upx_exclude=[], name='privacytool-api-gateway')
