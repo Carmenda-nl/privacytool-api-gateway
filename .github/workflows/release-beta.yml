@@ -20,8 +20,6 @@ jobs:
     uses: Carmenda-nl/carmenda-workflows/.github/workflows/python-release-beta.yml@main
     with:
       working-directory: app
-      build-output-name: api-gateway
-      artifact-name: api-gateway-windows
-      zip-prefix: privacytool_api-gateway_win
+      build-name: privacytool-api-gateway
       version-file: app/main/_version.py
     secrets: inherit
