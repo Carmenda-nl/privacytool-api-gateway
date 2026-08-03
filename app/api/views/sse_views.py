@@ -12,13 +12,12 @@ from typing import TYPE_CHECKING
 
 import httpx
 from asgiref.sync import sync_to_async
-from django.conf import settings
 from django.http import StreamingHttpResponse
 from django.utils import translation
 from django.utils.translation import gettext as _
 
 from api.models import DeidentificationJob
-from api.services.job_runner import engine_header, sync_status
+from api.services.job_runner import engine_header, engine_url, sync_status
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -44,9 +43,9 @@ def _stage_label(progress_info: dict, fallback: str) -> str:
     return translated_stage
 
 
-async def _relay_engine_stream(client: httpx.AsyncClient, job_id: str) -> AsyncGenerator[tuple[int, str] | None]:
+async def _relay_stream(client: httpx.AsyncClient, engine: str, job_id: str) -> AsyncGenerator[tuple[int, str] | None]:
     """Relay the engine's progress stream while it runs."""
-    url = f'{settings.ENGINE_URL}/api/progress/stream'
+    url = engine_url(engine, '/api/progress/stream')
 
     try:
         async with client.stream('GET', url, params={'job_id': job_id}) as response:
@@ -102,13 +101,15 @@ async def _finalize(job_id: str) -> AsyncGenerator[str]:
 async def progress(request: HttpRequest, job_id: str) -> StreamingHttpResponse:
     """Relay job progress as Server-Sent Events from the engine's progress stream."""
     language = getattr(request, 'LANGUAGE_CODE', translation.get_language())
+    job = await DeidentificationJob.objects.aget(pk=job_id)
 
     async def event_stream() -> AsyncGenerator[str]:
         translation.activate(language)
 
         # Phase 1: relay the engine's live progress.
-        async with httpx.AsyncClient(timeout=httpx.Timeout(5.0, read=None), headers=engine_header()) as client:
-            async for live in _relay_engine_stream(client, str(job_id)):
+        client_timeout = httpx.Timeout(5.0, read=None)
+        async with httpx.AsyncClient(timeout=client_timeout, headers=engine_header(job.engine)) as client:
+            async for live in _relay_stream(client, job.engine, str(job_id)):
                 if live is None:  # engine reached a terminal state
                     break
                 yield _json_format(percentage=live[0], stage=live[1], status='processing')

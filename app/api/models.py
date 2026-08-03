@@ -14,8 +14,16 @@ from django.db import models
 from django.utils.text import get_valid_filename
 
 from main.storage import OverwriteStorage
+from settings.models import ConfigValues
+from settings.models import engine_selection as default_engine_id
 
 overwrite_storage = OverwriteStorage()
+
+
+def default_engine() -> str:
+    """Defaults to whichever engine is currently selected in the app settings."""
+    config_values = ConfigValues.objects.first()
+    return config_values.engine_selection if config_values else default_engine_id()
 
 
 def filepath(instance: DeidentificationJob, filename: str) -> str:
@@ -51,6 +59,7 @@ class DeidentificationJob(models.Model):
     ACTIVE_STATUSES = frozenset({Status.PENDING, Status.PROCESSING})
 
     job_id = models.UUIDField(default=uuid.uuid1, editable=False, primary_key=True)
+    engine = models.CharField(default=default_engine)
     input_cols = models.CharField(blank=True)
     input_file = models.FileField(upload_to=input_path, storage=overwrite_storage, max_length=255)
     datakey = models.FileField(upload_to=input_path, storage=overwrite_storage, null=True, blank=True, max_length=255)

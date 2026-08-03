@@ -21,7 +21,7 @@ from django.utils.translation import gettext as _
 from django.utils.translation import ngettext as _ng
 from rest_framework import serializers
 
-from api.models import DeidentificationJob, output_path
+from api.models import DeidentificationJob, default_engine, output_path
 from api.utils.uploads import get_metadata
 from api.validators import (
     validate_file,
@@ -35,15 +35,25 @@ from settings.models import ConfigValues
 class ConfigValuesSerializer(serializers.ModelSerializer):
     """Serializer for the app settings persistent values."""
 
+    language_selection = serializers.ChoiceField(choices=settings.LANGUAGES)
     available_languages = serializers.SerializerMethodField(read_only=True)
+    engine_selection = serializers.ChoiceField(choices=list(settings.ENGINES))
+    available_engines = serializers.SerializerMethodField(read_only=True)
 
     def get_available_languages(self, obj: ConfigValues) -> list[dict[str, str]]:
         """Return the list of languages supported by the application."""
         return [{'code': code, 'name': str(name)} for code, name in settings.LANGUAGES]
 
+    def get_available_engines(self, obj: ConfigValues) -> list[dict[str, str]]:
+        """Return the list of engines configured for the application."""
+        return [
+            {'id': engine_id, 'url': engine['url'], 'port': engine['port']}
+            for engine_id, engine in settings.ENGINES.items()
+        ]
+
     class Meta:
         model = ConfigValues
-        fields = ('id', 'language', 'available_languages')
+        fields = ('id', 'language_selection', 'available_languages', 'engine_selection', 'available_engines')
 
 
 class JobListSerializer(serializers.ModelSerializer):
@@ -85,6 +95,7 @@ class JobSerializer(serializers.ModelSerializer):
     input_file = serializers.FileField(required=False)
     datakey = serializers.FileField(required=False)
     data_permission = serializers.BooleanField(required=False, default=False)
+    engine = serializers.ChoiceField(choices=list(settings.ENGINES), default=default_engine, initial=default_engine)
 
     class Meta:
         model = DeidentificationJob

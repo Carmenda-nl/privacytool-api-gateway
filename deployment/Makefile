@@ -3,8 +3,13 @@
 # This program is distributed under the terms of the PolyForm Noncommercial License 1.0.0          #
 # ------------------------------------------------------------------------------------------------ #
 
-.PHONY: up
+.PHONY: up attach-deduce attach-deidentify
 
-up:
+compose:
 	docker compose up -d --build
-	docker attach engine
+
+watch-deduce:
+	docker attach carmenda-deduce-engine
+
+watch-deidentify:
+	docker attach deidentify-engine
