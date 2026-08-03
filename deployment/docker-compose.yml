@@ -6,8 +6,8 @@
 name: privacytool
 
 services:
-  engine:
-    container_name: engine
+  carmenda-deduce-engine:
+    container_name: carmenda-deduce-engine
     build:
       context: ../../carmenda-deduce-engine
       dockerfile: deployment/Dockerfile
@@ -25,6 +25,25 @@ services:
     mem_reservation: 2g
     restart: unless-stopped
 
+  deidentify-engine:
+    container_name: deidentify-engine
+    build:
+      context: ../../deidentify-engine
+      dockerfile: deployment/Dockerfile
+    environment:
+      PORT: 8002
+      DEBUG: False
+      LOG_LEVEL: INFO
+      M2M_HASH: ${M2M_SECRET:?set M2M_SECRET in deployment/.env}
+    volumes:
+      - data:/app/data
+    expose:
+      - 8002
+    tty: true
+    mem_limit: 6g
+    mem_reservation: 2g
+    restart: unless-stopped
+
   gateway:
     container_name: api-gateway
     build:
@@ -34,14 +53,18 @@ services:
       DEBUG: True
       LOG_LEVEL: INFO
       SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY in deployment/.env}
-      ENGINE_URL: http://engine:8001
-      ENGINE_M2M_HASH: ${M2M_SECRET:?set M2M_SECRET in deployment/.env}
+      ENGINES: >-
+        {"carmenda-deduce-engine": {"url": "http://carmenda-deduce-engine", "port": "8001",
+        "m2m_hash": "${M2M_SECRET}"},
+        "deidentify-engine": {"url": "http://deidentify-engine", "port": "8002",
+        "m2m_hash": "${M2M_SECRET}"}}
     ports:
       - 8000:8000
     volumes:
       - data:/app/data
     depends_on:
-      - engine
+      - carmenda-deduce-engine
+      - deidentify-engine
     mem_limit: 1g
     restart: unless-stopped
 
