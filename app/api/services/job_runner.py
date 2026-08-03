@@ -23,7 +23,7 @@ logger = logging.getLogger('api-gateway')
 def engine_url(engine: str, path: str) -> str:
     """Build a full URL to the given engine's API path."""
     config = settings.ENGINES[engine]
-    return f"{config['url']}:{config['port']}{path}"
+    return f'{config["url"]}:{config["port"]}{path}'
 
 
 def engine_header(engine: str) -> dict[str, str]:

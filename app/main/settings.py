@@ -37,9 +37,12 @@ ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1'])
 CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=['http://127.0.0.1'])
 
 
-ENGINES = env.json('ENGINES', default={
-    'default-engine': {'url': 'http://127.0.0.1', 'port': '8001', 'm2m_hash': 'unsecure_connection'},
-})
+ENGINES = env.json(
+    'ENGINES',
+    default={
+        'default-engine': {'url': 'http://127.0.0.1', 'port': '8001', 'm2m_hash': 'unsecure_connection'},
+    },
+)
 
 
 INSTALLED_APPS = [
