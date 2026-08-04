@@ -39,6 +39,9 @@ required-version = ">=0.10.9"
 [tool.setuptools]
 packages = []
 
+[tool.setuptools.dynamic]
+version = { file = "main/VERSION" }
+
 [tool.ruff]
 line-length = 120
 exclude = ['migrations']
