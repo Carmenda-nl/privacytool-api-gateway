@@ -24,7 +24,8 @@ env = environ.FileAwareEnv(
 # Build paths inside the project like this: BASE_DIR / 'subdir'
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-APP_VERSION = (BASE_DIR / 'main' / 'VERSION').read_text().strip()
+APP_DIR = Path(sys._MEIPASS) / 'app' if hasattr(sys, '_MEIPASS') else BASE_DIR
+APP_VERSION = (APP_DIR / 'main' / 'VERSION').read_text().strip()
 
 # Take environment variables from .env file
 environ.Env.read_env(BASE_DIR / '.env')
@@ -167,8 +168,7 @@ LANGUAGES = [
     ('nl', _('Dutch')),
 ]
 
-
-LOCALE_PATHS = [Path(sys._MEIPASS) / 'app' / 'locale'] if hasattr(sys, '_MEIPASS') else [BASE_DIR / 'locale']
+LOCALE_PATHS = [APP_DIR / 'locale']
 
 
 # Static files (CSS, JavaScript, Images)
