@@ -9,13 +9,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from django.conf import settings
 from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.views import APIView
 
 from api.serializers import ConfigValuesSerializer
-from main._version import __version__
 from settings.models import ConfigValues
 
 if TYPE_CHECKING:
@@ -53,7 +53,7 @@ class VersionView(APIView):
 
     def get(self, request: Request) -> Response:
         """Return the application version."""
-        return Response({'version': __version__})
+        return Response({'version': settings.APP_VERSION})
 
 
 class ConfigValuesView(generics.RetrieveUpdateAPIView):

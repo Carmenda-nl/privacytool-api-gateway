@@ -8,8 +8,11 @@ from pathlib import Path
 from PyInstaller.utils.hooks import collect_all, collect_data_files, collect_submodules, copy_metadata
 
 sys.path.insert(0, str(Path(SPECPATH) / 'app'))
-from main._version import __version__
 
+# Update paths to match current project structure
+app_path = Path(SPECPATH) / 'app'
+
+__version__ = (app_path / 'main' / 'VERSION').read_text().strip()
 print(f'\nAPI-Gateway build: {__version__}\n')
 
 # Check build OS
@@ -17,9 +20,6 @@ windows = sys.platform == 'win32'
 site_packages = site.getsitepackages()[1] if windows else site.getsitepackages()[0]
 
 rest_framework_path = Path(site_packages) / 'rest_framework'
-
-# Update paths to match current project structure
-app_path = Path(SPECPATH) / 'app'
 
 datas = []
 datas += copy_metadata('polars')
