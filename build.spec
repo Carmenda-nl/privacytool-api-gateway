@@ -39,6 +39,7 @@ excluded_items = {
     'core.py',
     'Makefile',
     'pyproject.toml',
+    'migrations',
 }
 
 for root, dirs, files in os.walk(app_path):
@@ -115,6 +116,22 @@ a = Analysis(
     noarchive=False,
     optimize=1,
 )
+
+# PyInstaller's built-in Django hook auto-collects data files from the Django root
+local_migration_apps = {'api', 'settings'}
+
+def local_migrations_entry(dest):
+    if not isinstance(dest, str):
+        return False
+
+    parts = dest.replace('\\', '/').split('/')
+    return len(parts) >= 2 and parts[0] in local_migration_apps and 'migrations' in parts
+
+a.datas = [
+    entry
+    for entry in a.datas
+    if entry[0].replace('\\', '/') != 'main/VERSION' and not local_migrations_entry(entry[0])
+]
 
 pyz = PYZ(a.pure)
 
