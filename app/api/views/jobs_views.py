@@ -97,7 +97,7 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
         old_datakey = job.datakey.name if job.datakey else None
         old_permission = job.data_permission
 
-        new_columns = request.data.get('input_cols')
+        new_columns = data.get('input_cols')
         columns_changed = new_columns is not None and new_columns != old_columns
 
         new_input = request.FILES.get('input_file')
