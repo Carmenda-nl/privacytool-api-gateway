@@ -37,7 +37,7 @@ class ConfigValuesSerializer(serializers.ModelSerializer):
 
     language_selection = serializers.ChoiceField(choices=settings.LANGUAGES)
     available_languages = serializers.SerializerMethodField(read_only=True)
-    engine_selection = serializers.ChoiceField(choices=list(settings.ENGINES))
+    engine_selection = serializers.ChoiceField(choices=list(settings.ENGINES), allow_blank=True, required=False)
     available_engines = serializers.SerializerMethodField(read_only=True)
 
     def get_available_languages(self, obj: ConfigValues) -> list[dict[str, str]]:

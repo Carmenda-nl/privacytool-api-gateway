@@ -5,21 +5,15 @@
 
 """Settings model for the Django project."""
 
-from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
-
-
-def engine_selection() -> str:
-    """Default to the first configured engine."""
-    return next(iter(settings.ENGINES), '')
 
 
 class ConfigValues(models.Model):
     """Model to store config values for the application."""
 
     language_selection = models.CharField(max_length=2, default='nl')
-    engine_selection = models.CharField(default=engine_selection)
+    engine_selection = models.CharField(blank=True, default='')
 
     def __str__(self) -> str:
         """Return a string representation of the config values."""
