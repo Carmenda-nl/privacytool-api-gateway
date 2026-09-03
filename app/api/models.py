@@ -10,12 +10,12 @@ from __future__ import annotations
 import uuid
 from pathlib import Path
 
+from django.conf import settings
 from django.db import models
 from django.utils.text import get_valid_filename
 
 from main.storage import OverwriteStorage
 from settings.models import ConfigValues
-from settings.models import engine_selection as default_engine_id
 
 overwrite_storage = OverwriteStorage()
 
@@ -23,7 +23,9 @@ overwrite_storage = OverwriteStorage()
 def default_engine() -> str:
     """Defaults to whichever engine is currently selected in the app settings."""
     config_values = ConfigValues.objects.first()
-    return config_values.engine_selection if config_values else default_engine_id()
+    if config_values and config_values.engine_selection:
+        return config_values.engine_selection
+    return next(iter(settings.ENGINES), '')
 
 
 def filepath(instance: DeidentificationJob, filename: str) -> str:

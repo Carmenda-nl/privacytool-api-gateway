@@ -24,7 +24,11 @@ from preprocessing.csv_handler import detect_csv_properties, strip_bom
 
 def validate_required_columns(columns: list[str], input_cols: str) -> None:
     """Validate that all specified input columns exist in the given columns."""
-    required = dict(column.strip().split('=') for column in input_cols.split(','))
+    required = {}
+
+    for column in input_cols.split(','):
+        partitioned = column.partition('=')
+        required[partitioned[0].strip()] = partitioned[2]
 
     for col_value in required.values():
         if col_value not in columns:
