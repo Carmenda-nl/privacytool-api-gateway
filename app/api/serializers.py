@@ -267,7 +267,9 @@ class ZipSerializer(serializers.ModelSerializer):
     output_fields: ClassVar[list[str]] = [
         field.name
         for field in DeidentificationJob._meta.get_fields()
-        if isinstance(field, FileField) and field.upload_to is output_path and field.name != 'zip_file'
+        if isinstance(field, FileField)
+        and field.upload_to is output_path
+        and field.name not in ('zip_file', 'output_datakey')
     ]
 
     zipfile = serializers.SerializerMethodField()
