@@ -67,6 +67,7 @@ def collect_output_files(job: DeidentificationJob) -> list[str]:
     """Collect all files in the job output directory, excluding the input file."""
     job_output_dir = Path(settings.MEDIA_ROOT) / 'output' / str(job.job_id)
     input_filename = Path(getattr(job.input_file, 'name', '')).name
+    datakey_filename = Path(getattr(job.output_datakey, 'name', '')).name
 
     if not job_output_dir.exists():
         return []
@@ -74,7 +75,8 @@ def collect_output_files(job: DeidentificationJob) -> list[str]:
     return [
         str(path)
         for path in sorted(job_output_dir.iterdir())
-        if path.is_file() and (not input_filename or path.name != input_filename) and path.suffix != '.zip'
+        # Exclude the input file and datakey
+        if path.is_file() and path.name not in (input_filename, datakey_filename) and path.suffix != '.zip'
     ]
 
 
@@ -98,11 +100,6 @@ def create_zipfile(job: DeidentificationJob, files_to_zip: list[str]) -> None:
         with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipped_file:
             for file_path in files_to_zip:
                 file_path_obj = Path(file_path)
-
-                if not file_path_obj.exists():
-                    error_message = f'File not found for zipping: {file_path}'
-                    logger.error(error_message)
-                    raise RuntimeError(error_message)
 
                 basename = file_path_obj.name
                 zipped_file.write(file_path, basename)
