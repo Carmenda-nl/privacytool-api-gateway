@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import uuid
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from django.conf import settings
 from django.db import models
@@ -16,6 +17,9 @@ from django.utils.text import get_valid_filename
 
 from main.storage import OverwriteStorage
 from settings.models import ConfigValues
+
+if TYPE_CHECKING:
+    from django.db.models.fields.files import FieldFile
 
 overwrite_storage = OverwriteStorage()
 
@@ -26,6 +30,14 @@ def default_engine() -> str:
     if config_values and config_values.engine_selection:
         return config_values.engine_selection
     return next(iter(settings.ENGINES), '')
+
+
+def reusable_datakey() -> FieldFile | None:
+    """Look if a reusable datakey is set when empty."""
+    config_values = ConfigValues.objects.first()
+    if config_values and config_values.reusable_datakey:
+        return config_values.reusable_datakey
+    return None
 
 
 def filepath(instance: DeidentificationJob, filename: str) -> str:
@@ -64,7 +76,9 @@ class DeidentificationJob(models.Model):
     engine = models.CharField(default=default_engine)
     input_cols = models.CharField(blank=True)
     input_file = models.FileField(upload_to=input_path, storage=overwrite_storage, max_length=255)
-    datakey = models.FileField(upload_to=input_path, storage=overwrite_storage, null=True, blank=True, max_length=255)
+    datakey = models.FileField(
+        default=reusable_datakey, upload_to=input_path, storage=overwrite_storage, null=True, blank=True, max_length=255
+    )
     output_file = models.FileField(upload_to=output_path, null=True, blank=True, max_length=255)
     output_datakey = models.FileField(upload_to=output_path, null=True, blank=True, max_length=255)
     data_permission = models.BooleanField(default=False)

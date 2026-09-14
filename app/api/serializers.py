@@ -39,6 +39,7 @@ class ConfigValuesSerializer(serializers.ModelSerializer):
     available_languages = serializers.SerializerMethodField(read_only=True)
     engine_selection = serializers.ChoiceField(choices=list(settings.ENGINES), allow_blank=True, required=False)
     available_engines = serializers.SerializerMethodField(read_only=True)
+    reusable_datakey = serializers.FileField(required=False, allow_null=True)
 
     def get_available_languages(self, obj: ConfigValues) -> list[dict[str, str]]:
         """Return the list of languages supported by the application."""
@@ -51,9 +52,24 @@ class ConfigValuesSerializer(serializers.ModelSerializer):
             for engine_id, engine in settings.ENGINES.items()
         ]
 
+    def validate_reusable_datakey(self, value: UploadedFile | None) -> UploadedFile | None:
+        """Validate the reusable datakey file before it is uploaded."""
+        if not value:
+            return value
+
+        result = validate_file(value, datakey='datakey')
+        return result['file']
+
     class Meta:
         model = ConfigValues
-        fields = ('id', 'language_selection', 'available_languages', 'engine_selection', 'available_engines')
+        fields = (
+            'id',
+            'language_selection',
+            'available_languages',
+            'engine_selection',
+            'available_engines',
+            'reusable_datakey',
+        )
 
 
 class JobListSerializer(serializers.ModelSerializer):

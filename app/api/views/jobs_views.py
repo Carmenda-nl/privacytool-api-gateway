@@ -30,6 +30,7 @@ from api.services.job_runner import cancel_engine, submit_job, sync_status
 from api.utils.packaging import collect_output_files, create_zipfile, generate_consent
 from api.utils.previews import generate_preview
 from api.utils.uploads import sanitize_uploaded
+from settings.models import ConfigValues
 
 if TYPE_CHECKING:
     from django.http import HttpRequest
@@ -121,7 +122,12 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
             job.input_file.storage.delete(str(old_path.with_name(f'{old_path.stem}_skipped_lines.csv')))
 
         if (datakey_changed or input_uploaded) and old_datakey:
-            job.datakey.storage.delete(old_datakey)
+            config_values = ConfigValues.objects.first()
+            reusable_datakey = (
+                config_values.reusable_datakey.name if config_values and config_values.reusable_datakey else None
+            )
+            if old_datakey != reusable_datakey:
+                job.datakey.storage.delete(old_datakey)
             job.datakey = new_datakey
             job.save(update_fields=['datakey'])
 
