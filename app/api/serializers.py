@@ -60,6 +60,17 @@ class ConfigValuesSerializer(serializers.ModelSerializer):
         result = validate_file(value, datakey='datakey')
         return result['file']
 
+    def update(self, instance: ConfigValues, validated_data: dict) -> ConfigValues:
+        """Update config values, deleting the old datakey file when it is replaced or cleared."""
+        if 'reusable_datakey' in validated_data:
+            old_datakey = instance.reusable_datakey
+            new_datakey = validated_data['reusable_datakey']
+
+            if old_datakey and old_datakey.name and old_datakey != new_datakey:
+                old_datakey.storage.delete(old_datakey.name)
+
+        return super().update(instance, validated_data)
+
     class Meta:
         model = ConfigValues
         fields = (
