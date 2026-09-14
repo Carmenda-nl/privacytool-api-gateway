@@ -124,6 +124,14 @@ class JobSerializer(serializers.ModelSerializer):
     data_permission = serializers.BooleanField(required=False, default=False)
     engine = serializers.ChoiceField(choices=list(settings.ENGINES), default=default_engine, initial=default_engine)
 
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        """Hide the datakey field when a reusable datakey is configured in settings."""
+        super().__init__(*args, **kwargs)
+
+        config_values = ConfigValues.objects.first()
+        if config_values and config_values.reusable_datakey:
+            self.fields.pop('datakey', None)
+
     class Meta:
         model = DeidentificationJob
         exclude: ClassVar = ['zip_preview']
