@@ -18,6 +18,7 @@ decoupling the API layer from the underlying pseudonymization logic.
 
 - **REST API**: HTTP endpoints for submitting and managing pseudonymization requests
 - **CSV Sanitization**: Uploaded CSV files are sanitized and normalized (encoding, HTML stripping, quote handling)
+- **Reusable Datakey**: Configure a single datakey once
 - **Multiple Engines**: Pick which engine handles each job
 - **Asynchronous Processing**: Job-based processing with real-time progress tracking via Server-Sent Events (SSE)
 - **Job Management**: Cancel running jobs and track processing status through the API
@@ -51,6 +52,15 @@ from the underlying pseudonymization logic.
 
 The gateway can be configured with multiple engines (see `ENGINES` below). Each job stores which engine it should run on.
 All engine calls for a job (submit, progress, cancel) are routed to that job's stored engine.
+
+### Reusable Datakey
+
+Instead of uploading one per job, you can configure a single **reusable datakey** once via the settings.
+It is stored encrypted. Once configured:
+
+- New jobs automatically receive a decrypted copy of the reusable datakey
+- the per-job `datakey` upload field becomes read-only and is no longer accepted from the API.
+- Updating or clearing the reusable datakey propagates the change to all currently pending jobs.
 
 ## License
 
@@ -169,11 +179,18 @@ LOG_LEVEL=INFO
 SECRET_KEY=your-secret-key-here
 CSRF_TRUSTED_ORIGINS=http://127.0.0.1
 
+ENCRYPTION_KEY=your-fernet-key-here
+
 ENGINES={"carmenda-deduce-engine": {"url": "http://127.0.0.1", "port": "8001", "m2m_hash": "unsecure_1"}, "deidentify-engine": {"url": "http://127.0.0.1", "port": "8002", "m2m_hash": "unsecure_2"}}
 ```
 
 > **Note:** Replace `your-secret-key-here` with a secure random string. For production environments, 
 ensure `DEBUG=False` and use appropriate CSRF trusted origins.
+
+> **Note:** `ENCRYPTION_KEY` must be a valid Fernet key (generate one with
+`python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`).
+It encrypts the reusable datakey at rest - if omitted, a random key is generated on every startup, 
+which makes any previously stored reusable datakey undecryptable after a restart.
 
 > **Note:** `ENGINES` is a JSON object mapping an engine ID to its connection details (`url`, `port`,
 and `m2m_hash`). `m2m_hash` is the shared secret sent as the `X-M2M-Key` header on every call to that
