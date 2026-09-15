@@ -70,7 +70,21 @@ class ConfigValuesSerializer(serializers.ModelSerializer):
             if old_datakey and old_datakey.name and old_datakey != new_datakey:
                 old_datakey.storage.delete(old_datakey.name)
 
-        return super().update(instance, validated_data)
+        instance = super().update(instance, validated_data)
+
+        reusable_datakey = instance.reusable_datakey
+
+        if 'reusable_datakey' in validated_data and reusable_datakey:
+            filename = Path(cast('str', reusable_datakey.name)).name
+
+            for job in DeidentificationJob.objects.filter(status=DeidentificationJob.Status.PENDING):
+                if job.datakey:
+                    job.datakey.storage.delete(cast('str', job.datakey.name))
+
+                with reusable_datakey.open('rb') as source:
+                    job.datakey.save(filename, File(source), save=True)
+
+        return instance
 
     class Meta:
         model = ConfigValues
