@@ -21,7 +21,7 @@ class Migration(migrations.Migration):
                 ('engine', models.CharField(default=api.models.default_engine)),
                 ('input_cols', models.CharField(blank=True)),
                 ('input_file', models.FileField(max_length=255, storage=main.storage.OverwriteStorage(), upload_to=api.models.input_path)),
-                ('datakey', models.FileField(blank=True, default=api.models.reusable_datakey, max_length=255, null=True, storage=main.storage.OverwriteStorage(), upload_to=api.models.input_path)),
+                ('datakey', models.FileField(blank=True, max_length=255, null=True, storage=main.storage.OverwriteStorage(), upload_to=api.models.input_path)),
                 ('output_file', models.FileField(blank=True, max_length=255, null=True, upload_to=api.models.output_path)),
                 ('output_datakey', models.FileField(blank=True, max_length=255, null=True, upload_to=api.models.output_path)),
                 ('data_permission', models.BooleanField(default=False)),

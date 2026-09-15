@@ -7,7 +7,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, ClassVar, cast
 
 if TYPE_CHECKING:
     from django.core.files.uploadedfile import UploadedFile
@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 from pathlib import Path
 
 from django.conf import settings
+from django.core.files.base import File
 from django.db.models import FileField
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext as _
@@ -125,12 +126,13 @@ class JobSerializer(serializers.ModelSerializer):
     engine = serializers.ChoiceField(choices=list(settings.ENGINES), default=default_engine, initial=default_engine)
 
     def get_fields(self) -> dict:
-        """Hide the datakey field when a reusable datakey is configured in settings."""
+        """Make the datakey field read-only when a reusable datakey is configured in settings."""
         fields = super().get_fields()
 
         config_values = ConfigValues.objects.first()
-        if config_values and config_values.reusable_datakey:
-            fields.pop('datakey', None)
+        if config_values and config_values.reusable_datakey and 'datakey' in fields:
+            fields['datakey'].read_only = True
+            fields['datakey'].required = False
 
         return fields
 
@@ -225,6 +227,19 @@ class JobSerializer(serializers.ModelSerializer):
             return result['file']
         return None
 
+    def create(self, validated_data: dict) -> DeidentificationJob:
+        """Create job, copying the reusable datakey when available."""
+        job = super().create(validated_data)
+
+        config_values = ConfigValues.objects.first()
+        reusable_datakey = config_values.reusable_datakey if config_values else None
+
+        if reusable_datakey:
+            with reusable_datakey.open('rb') as source:
+                job.datakey.save(Path(cast('str', reusable_datakey.name)).name, File(source), save=True)
+
+        return job
+
     def validate(self, attrs: dict) -> dict:
         """Require input_file on create and cross-validate input_cols against its columns."""
         if self.instance is None and not attrs.get('input_file'):
@@ -278,7 +293,11 @@ class JobSerializer(serializers.ModelSerializer):
                 },
             }
 
-        file_fields = [file.name for file in instance._meta.get_fields() if isinstance(file, FileField)]
+        file_fields = [
+            file.name
+            for file in instance._meta.get_fields()
+            if isinstance(file, FileField) and file.name in representation
+        ]
 
         return get_metadata(representation, instance, file_fields)
 

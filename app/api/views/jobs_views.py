@@ -105,7 +105,10 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
         input_uploaded = new_input is not None
         input_changed = input_uploaded and (not old_input or Path(old_input).name != new_input.name)
 
-        new_datakey = request.FILES.get('datakey')
+        config_values = ConfigValues.objects.first()
+        reusable_datakey = bool(config_values.reusable_datakey) if config_values else False
+
+        new_datakey = None if reusable_datakey else request.FILES.get('datakey')
         datakey_changed = new_datakey is not None
 
         if new_columns == old_columns and input_uploaded:
@@ -122,12 +125,7 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
             job.input_file.storage.delete(str(old_path.with_name(f'{old_path.stem}_skipped_lines.csv')))
 
         if (datakey_changed or input_uploaded) and old_datakey:
-            config_values = ConfigValues.objects.first()
-            reusable_datakey = (
-                config_values.reusable_datakey.name if config_values and config_values.reusable_datakey else None
-            )
-            if old_datakey != reusable_datakey:
-                job.datakey.storage.delete(old_datakey)
+            job.datakey.storage.delete(old_datakey)
             job.datakey = new_datakey
             job.save(update_fields=['datakey'])
 
