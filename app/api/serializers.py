@@ -63,7 +63,8 @@ class ConfigValuesSerializer(serializers.ModelSerializer):
         file = result['file']
 
         file.seek(0)
-        return ContentFile(encrypt_bytes(file.read()), name=file.name)
+        name = Path(cast('str', file.name)).with_suffix('.bin').name
+        return ContentFile(encrypt_bytes(file.read()), name=name)
 
     def update(self, instance: ConfigValues, validated_data: dict) -> ConfigValues:
         """Update config values, deleting the old datakey file when it is replaced or cleared."""
@@ -79,7 +80,7 @@ class ConfigValuesSerializer(serializers.ModelSerializer):
         reusable_datakey = instance.reusable_datakey
 
         if 'reusable_datakey' in validated_data and reusable_datakey:
-            filename = Path(cast('str', reusable_datakey.name)).name
+            filename = Path(cast('str', reusable_datakey.name)).with_suffix('.csv').name
 
             for job in DeidentificationJob.objects.filter(status=DeidentificationJob.Status.PENDING):
                 if job.datakey:
@@ -254,7 +255,7 @@ class JobSerializer(serializers.ModelSerializer):
 
         if reusable_datakey:
             with reusable_datakey.open('rb') as source:
-                filename = Path(cast('str', reusable_datakey.name)).name
+                filename = Path(cast('str', reusable_datakey.name)).with_suffix('.csv').name
                 job.datakey.save(filename, ContentFile(decrypt_bytes(source.read())), save=True)
 
         return job
