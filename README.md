@@ -58,8 +58,8 @@ All engine calls for a job (submit, progress, cancel) are routed to that job's s
 Instead of uploading one per job, you can configure a single **reusable datakey** once via the settings.
 It is stored encrypted. Once configured:
 
-- New jobs automatically receive a decrypted copy of the reusable datakey
-- the per-job `datakey` upload field becomes read-only and is no longer accepted from the API.
+- New jobs automatically receive a decrypted copy of the reusable datakey.
+- The per-job `datakey` upload field becomes read-only and is no longer accepted from the API.
 - Updating or clearing the reusable datakey propagates the change to all currently pending jobs.
 
 ## License
@@ -89,9 +89,15 @@ needs its own Django secret key. Both are read from `deployment/.env`:
 # deployment/.env
 M2M_SECRET=<your-shared-secret>
 SECRET_KEY=<your-django-secret-key>
+ENCRYPTION_KEY=<your-fernet-key>
 ```
 
 > **Note:** Rotate `M2M_SECRET` and `SECRET_KEY` for production deployments.
+
+> **Note:** `ENCRYPTION_KEY` must be a valid Fernet key (generate one with
+`python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`). It encrypts the
+reusable datakey at rest (see [Reusable Datakey](#reusable-datakey) below) - keep it stable, since changing it
+makes any previously stored reusable datakey undecryptable.
 
 ### Build and run
 
