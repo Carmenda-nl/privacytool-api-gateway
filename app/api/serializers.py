@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 from pathlib import Path
 
 from django.conf import settings
-from django.core.files.base import File
+from django.core.files.base import ContentFile
 from django.db.models import FileField
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext as _
@@ -30,6 +30,7 @@ from api.validators import (
     validate_input_cols,
     validate_required_columns,
 )
+from preprocessing.encryption import decrypt_bytes, encrypt_bytes
 from settings.models import ConfigValues
 
 
@@ -53,13 +54,16 @@ class ConfigValuesSerializer(serializers.ModelSerializer):
             for engine_id, engine in settings.ENGINES.items()
         ]
 
-    def validate_reusable_datakey(self, value: UploadedFile | None) -> UploadedFile | None:
-        """Validate the reusable datakey file before it is uploaded."""
+    def validate_reusable_datakey(self, value: UploadedFile | None) -> UploadedFile | ContentFile | None:
+        """Validate the reusable datakey file, then encrypt it before it is stored."""
         if not value:
             return value
 
         result = validate_file(value, datakey='datakey')
-        return result['file']
+        file = result['file']
+
+        file.seek(0)
+        return ContentFile(encrypt_bytes(file.read()), name=file.name)
 
     def update(self, instance: ConfigValues, validated_data: dict) -> ConfigValues:
         """Update config values, deleting the old datakey file when it is replaced or cleared."""
@@ -82,7 +86,7 @@ class ConfigValuesSerializer(serializers.ModelSerializer):
                     job.datakey.storage.delete(cast('str', job.datakey.name))
 
                 with reusable_datakey.open('rb') as source:
-                    job.datakey.save(filename, File(source), save=True)
+                    job.datakey.save(filename, ContentFile(decrypt_bytes(source.read())), save=True)
 
         return instance
 
@@ -250,7 +254,8 @@ class JobSerializer(serializers.ModelSerializer):
 
         if reusable_datakey:
             with reusable_datakey.open('rb') as source:
-                job.datakey.save(Path(cast('str', reusable_datakey.name)).name, File(source), save=True)
+                filename = Path(cast('str', reusable_datakey.name)).name
+                job.datakey.save(filename, ContentFile(decrypt_bytes(source.read())), save=True)
 
         return job
 
