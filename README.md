@@ -95,9 +95,9 @@ internal compose network (they are not published to the host).
 
 > **Note:** Set `DEBUG=False` for production environments.
 
-### Viewing the deduce engine's progress bar
+### Viewing an engine's progress bar
 
-The deduce engine renders its processing progress as a live, redrawing Rich progress bar.
+Engines render their processing progress as a live, redrawing Rich progress bar.
 Docker Compose's combined log output prefixes and line-buffers each service's output, 
 which breaks that live redraw — the bar will appear frozen or garbled there.
 
@@ -105,8 +105,11 @@ which breaks that live redraw — the bar will appear frozen or garbled there.
 > not a bug. You must attach to the engine container directly to see it render:
 >
 > ```bash
-> docker attach carmenda-deduce-engine
+> docker attach [engine name]
 > ```
+>
+> Replace `[engine name]` with the container name of the engine you want to inspect (e.g.
+> `carmenda-deduce-engine`).
 >
 > Detach without stopping the container with `Ctrl+P, Ctrl+Q` (plain `Ctrl+C` stops it).
 >

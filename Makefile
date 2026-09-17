@@ -6,6 +6,8 @@
 APP_DIR := app
 DEPLOY_DIR := deployment
 
+export PYTHONDONTWRITEBYTECODE := 1
+
 .PHONY: help run prod lint format test typecheck check \
         compose watch-deduce watch-deidentify
 
