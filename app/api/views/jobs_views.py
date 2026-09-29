@@ -30,6 +30,7 @@ from api.services.job_runner import cancel_engine, submit_job, sync_status
 from api.utils.packaging import collect_output_files, create_zipfile, generate_consent
 from api.utils.previews import generate_preview
 from api.utils.uploads import sanitize_uploaded
+from preprocessing.datakey import prepare_datakey
 from settings.models import ConfigValues
 
 if TYPE_CHECKING:
@@ -65,6 +66,9 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
         sanitize_uploaded(job, getattr(serializer, '_file_metadata', {}))
         generate_preview(job)
 
+        if job.input_cols:
+            prepare_datakey(job)
+
         if job.data_permission:
             generate_consent(job)
 
@@ -81,6 +85,8 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
 
         if input_uploaded:
             generate_preview(job)
+        if job.input_cols:
+            prepare_datakey(job)
         if input_uploaded and 'data_permission' not in request.data:
             job.data_permission = False
             job.save(update_fields=['data_permission'])
