@@ -30,7 +30,7 @@ from api.services.job_runner import cancel_engine, submit_job, sync_status
 from api.utils.packaging import collect_output_files, create_zipfile, generate_consent
 from api.utils.previews import generate_preview
 from api.utils.uploads import sanitize_uploaded
-from preprocessing.datakey import prepare_datakey
+from preprocessing.datakey import append_new_clientnames, find_new_clientnames, prepare_datakey
 from settings.models import ConfigValues
 
 if TYPE_CHECKING:
@@ -242,6 +242,9 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
             filename = Path(job.input_file.name).name
             input_file = f'{job.job_id}/{filename}'
 
+            # re-check if a reusable datakey is added or changed
+            prepare_datakey(job)
+
             datakey = Path(job.datakey.name).name if job.datakey else None
 
             submit_job(job, input_file, input_cols, datakey)
@@ -266,6 +269,19 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
                 {'error': 'Job processing failed', 'details': str(error)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+    @action(detail=True, methods=['get'])
+    def check_datakey(self, request: HttpRequest, pk: str | None = None) -> Response:
+        """List clientnames that aren't yet in the reusable datakey."""
+        job = self.get_object()
+        return Response({'new_clientnames': find_new_clientnames(job)}, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'])
+    def apply_datakey(self, request: HttpRequest, pk: str | None = None) -> Response:
+        """Add new clientnames to the reusable datakey."""
+        job = self.get_object()
+        added = append_new_clientnames(job)
+        return Response({'added_clientnames': added}, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['get', 'post'])
     def zip_files(self, request: HttpRequest, pk: str | None = None) -> Response:

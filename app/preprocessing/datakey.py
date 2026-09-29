@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import io
 import logging
 import secrets
 import string
@@ -16,18 +17,26 @@ from typing import TYPE_CHECKING, cast
 import polars as pl
 from django.core.files.base import ContentFile
 
+from api.models import DeidentificationJob
+from preprocessing.encryption import decrypt_bytes, encrypt_bytes
+from settings.models import ConfigValues
+
 if TYPE_CHECKING:
-    from api.models import DeidentificationJob
+    from django.db.models.fields.files import FieldFile
 
 logger = logging.getLogger('api-gateway')
 
 DATAKEY_COLUMNS = {'Clientnaam': 'clientname', 'Synoniemen': 'synonyms', 'Code': 'code'}
 
 
-def load_datakey(datakey_path: str | Path) -> pl.DataFrame:
-    """Load an existing datakey CSV and return it with internal column names."""
-    df = pl.read_csv(datakey_path, encoding='utf-8', separator=',', eol_char='\n')
+def load_datakey(datakey_field: FieldFile, *, encrypted: bool = False) -> pl.DataFrame:
+    """Load an existing datakey CSV (decrypting it first if encrypted) and return it with internal column names."""
+    with datakey_field.open('rb') as source:
+        content = decrypt_bytes(source.read()) if encrypted else source.read()
+
+    df = pl.read_csv(io.BytesIO(content), encoding='utf-8', separator=',', eol_char='\n')
     df = df.rename(DATAKEY_COLUMNS)
+
     return df.with_columns(pl.col('clientname').str.strip_chars()).filter(pl.col('clientname') != '')
 
 
@@ -104,8 +113,8 @@ def _add_clientcodes(df: pl.DataFrame) -> pl.DataFrame:
     return pl.concat([filled_rows, apply_codes])
 
 
-def prepare_datakey(job: DeidentificationJob) -> str | None:
-    """Build or refresh the job's datakey ahead of engine submission."""
+def _load_clientnames(job: DeidentificationJob) -> pl.Series | None:
+    """Read the stripped clientname column from the job's input file, or None if not mapped."""
     input_cols_dict = {}
     for column in job.input_cols.split(','):
         partitioned = column.partition('=')
@@ -120,26 +129,31 @@ def prepare_datakey(job: DeidentificationJob) -> str | None:
         input_df = pl.read_csv(job.input_file.path, encoding='utf-8', separator=',')
     else:
         input_df = pl.read_excel(source=job.input_file.path)
-    clientnames = input_df.get_column(clientname_col).str.strip_chars()
 
-    existing = load_datakey(job.datakey.path) if job.datakey else None
+    return input_df.get_column(clientname_col).str.strip_chars()
+
+
+def prepare_datakey(job: DeidentificationJob) -> str | None:
+    """Build or refresh the job's datakey ahead of engine submission."""
+    clientnames = _load_clientnames(job)
+    if clientnames is None:
+        return None
+
+    config_values = ConfigValues.objects.first()
+    reusable_datakey = config_values.reusable_datakey if config_values else None
+
+    existing = pl.DataFrame(schema={'clientname': pl.Utf8, 'synonyms': pl.Utf8, 'code': pl.Utf8})
+    if reusable_datakey:
+        existing = load_datakey(reusable_datakey, encrypted=True)
+    elif job.datakey:
+        existing = load_datakey(job.datakey)
+
     unique_names = clientnames.drop_nulls().unique()
+    existing_names = existing.get_column('clientname').drop_nulls().unique()
+    missing_names_df = unique_names.filter(~unique_names.is_in(existing_names.implode()))
 
-    if existing is not None:
-        existing_names = existing.get_column('clientname').drop_nulls().unique()
-        missing_names_df = unique_names.filter(~unique_names.is_in(existing_names.implode()))
-
-        merged = _check_datakey(existing, missing_names_df)
-        datakey_df = _add_clientcodes(merged).sort('clientname')
-    else:
-        new_entry = pl.DataFrame(
-            {
-                'clientname': unique_names,
-                'synonyms': [''] * len(unique_names),
-                'code': [''] * len(unique_names),
-            }
-        )
-        datakey_df = _add_clientcodes(new_entry).sort('clientname')
+    merged = _check_datakey(existing, missing_names_df)
+    datakey_df = _add_clientcodes(merged).sort('clientname')
 
     old_datakey = job.datakey.name if job.datakey else None
     filename = f'{Path(cast("str", job.input_file.name)).stem}_key.csv'
@@ -150,3 +164,60 @@ def prepare_datakey(job: DeidentificationJob) -> str | None:
 
     logger.debug('Job "%s": datakey built/refreshed as "%s"', job.job_id, job.datakey.name)
     return Path(cast('str', job.datakey.name)).name
+
+
+def find_new_clientnames(job: DeidentificationJob) -> list[str]:
+    """List clientnames in the job's input file that aren't yet in the reusable datakey."""
+    config_values = ConfigValues.objects.first()
+    reusable_datakey = config_values.reusable_datakey if config_values else None
+
+    if not reusable_datakey:
+        return []
+
+    clientnames = _load_clientnames(job)
+    if clientnames is None:
+        return []
+
+    existing_names = load_datakey(reusable_datakey, encrypted=True).get_column('clientname').drop_nulls().unique()
+    unique_names = clientnames.drop_nulls().unique()
+    missing = unique_names.filter(~unique_names.is_in(existing_names.implode()))
+
+    return sorted(missing.to_list())
+
+
+def sync_datakey(reusable_datakey: FieldFile) -> None:
+    """Copy the (encrypted) reusable datakey into every pending job's own datakey."""
+    filename = Path(cast('str', reusable_datakey.name)).with_suffix('.csv').name
+
+    for job in DeidentificationJob.objects.filter(status=DeidentificationJob.Status.PENDING):
+        if job.datakey:
+            job.datakey.storage.delete(cast('str', job.datakey.name))
+
+        with reusable_datakey.open('rb') as source:
+            job.datakey.save(filename, ContentFile(decrypt_bytes(source.read())), save=True)
+
+
+def append_new_clientnames(job: DeidentificationJob) -> list[str]:
+    """Add the job's new clientnames, with freshly generated codes, to the reusable datakey."""
+    config_values = ConfigValues.objects.first()
+    reusable_datakey = config_values.reusable_datakey if config_values else None
+
+    if not reusable_datakey:
+        return []
+
+    new_names = find_new_clientnames(job)
+    if not new_names:
+        return []
+
+    existing = load_datakey(reusable_datakey, encrypted=True)
+    merged = _check_datakey(existing, pl.Series(new_names))
+    datakey_df = _add_clientcodes(merged).sort('clientname')
+
+    old_name = cast('str', reusable_datakey.name)
+    filename = Path(old_name).name
+    reusable_datakey.storage.delete(old_name)
+    reusable_datakey.save(filename, ContentFile(encrypt_bytes(save_datakey(datakey_df))), save=True)
+
+    sync_datakey(reusable_datakey)
+
+    return new_names

@@ -30,6 +30,7 @@ from api.validators import (
     validate_input_cols,
     validate_required_columns,
 )
+from preprocessing.datakey import sync_datakey
 from preprocessing.encryption import decrypt_bytes, encrypt_bytes
 from settings.models import ConfigValues
 
@@ -80,14 +81,7 @@ class ConfigValuesSerializer(serializers.ModelSerializer):
         reusable_datakey = instance.reusable_datakey
 
         if 'reusable_datakey' in validated_data and reusable_datakey:
-            filename = Path(cast('str', reusable_datakey.name)).with_suffix('.csv').name
-
-            for job in DeidentificationJob.objects.filter(status=DeidentificationJob.Status.PENDING):
-                if job.datakey:
-                    job.datakey.storage.delete(cast('str', job.datakey.name))
-
-                with reusable_datakey.open('rb') as source:
-                    job.datakey.save(filename, ContentFile(decrypt_bytes(source.read())), save=True)
+            sync_datakey(reusable_datakey)
 
         return instance
 
