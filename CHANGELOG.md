@@ -3,6 +3,30 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0-beta] - 2026-09-30
+
+### Added
+
+- Reusable datakey field & logic
+- Reusable datakey encryption
+- Reusable datakey to readme
+- Reusable datakey to docker-compose
+- Datakey build & control  on gateway [LVD-325]
+- Endpoints for updating a reusable datakey
+
+### Changed
+
+- Hide datakey input when reusable is set
+- Replace datakey with reusable when set during job
+- Endpoint to update reusable datakey [LVD-352]
+- Option only when  reusable datakey is set
+
+### Fixed
+
+- Reusable key not removed when replaced
+- Key not replaced or  copied when reusable
+- .csv -> .bin
+
 ## [2.2.0] - 2026-09-11
 
 ### Changed
