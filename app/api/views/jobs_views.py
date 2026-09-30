@@ -48,6 +48,14 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
     serializer_class = JobSerializer
     http_method_names = ('get', 'post', 'put', 'delete')
 
+    def get_extra_action_url_map(self) -> dict[str, str]:
+        """Only offer option when a reusable datakey is set."""
+        action_urls = super().get_extra_action_url_map()
+
+        if not ConfigValues.objects.filter(reusable_datakey__gt='').exists():
+            action_urls.pop('Update reusable datakey', None)
+        return action_urls
+
     def get_serializer_class(
         self,
     ) -> type[JobSerializer | JobListSerializer | JobStatusSerializer | ZipSerializer | DatakeySerializer]:
@@ -276,7 +284,7 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
             )
 
     @action(detail=True, methods=['get', 'post'])
-    def update_datakey(self, request: HttpRequest, pk: str | None = None) -> Response:
+    def update_reusable_datakey(self, request: HttpRequest, pk: str | None = None) -> Response:
         """Get or add clientnames missing from the reusable datakey."""
         job = self.get_object()
 
