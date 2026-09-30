@@ -331,6 +331,13 @@ class JobStatusSerializer(serializers.ModelSerializer):
         return 100 if obj.status == 'completed' else 0
 
 
+class DatakeySerializer(serializers.Serializer):
+    """Report on new clientnames for the reusable datakey; takes no input."""
+
+    new_clients_found = serializers.IntegerField(read_only=True, required=False)
+    new_clients_added = serializers.IntegerField(read_only=True, required=False)
+
+
 class ZipSerializer(serializers.ModelSerializer):
     """Package the output files of a completed job into a zipfile."""
 

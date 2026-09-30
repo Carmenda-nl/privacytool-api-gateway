@@ -21,6 +21,7 @@ from rest_framework.response import Response
 
 from api.models import DeidentificationJob
 from api.serializers import (
+    DatakeySerializer,
     JobListSerializer,
     JobSerializer,
     JobStatusSerializer,
@@ -47,8 +48,12 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
     serializer_class = JobSerializer
     http_method_names = ('get', 'post', 'put', 'delete')
 
-    def get_serializer_class(self) -> type[JobSerializer | JobListSerializer | JobStatusSerializer | ZipSerializer]:
+    def get_serializer_class(
+        self,
+    ) -> type[JobSerializer | JobListSerializer | JobStatusSerializer | ZipSerializer | DatakeySerializer]:
         """Return a serializer based on the current action."""
+        if self.action == 'update_datakey':
+            return DatakeySerializer
         if self.action == 'list':
             return JobListSerializer
         if self.action in ['process', 'cancel']:
@@ -270,18 +275,16 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-    @action(detail=True, methods=['get'])
-    def check_datakey(self, request: HttpRequest, pk: str | None = None) -> Response:
-        """List clientnames that aren't yet in the reusable datakey."""
+    @action(detail=True, methods=['get', 'post'])
+    def update_datakey(self, request: HttpRequest, pk: str | None = None) -> Response:
+        """Get or add clientnames missing from the reusable datakey."""
         job = self.get_object()
-        return Response({'new_clientnames': find_new_clientnames(job)}, status=status.HTTP_200_OK)
 
-    @action(detail=True, methods=['post'])
-    def apply_datakey(self, request: HttpRequest, pk: str | None = None) -> Response:
-        """Add new clientnames to the reusable datakey."""
-        job = self.get_object()
+        if request.method == 'GET':
+            return Response({'new_clients_found': len(find_new_clientnames(job))}, status=status.HTTP_200_OK)
+
         added = append_new_clientnames(job)
-        return Response({'added_clientnames': added}, status=status.HTTP_200_OK)
+        return Response({'new_clients_added': len(added)}, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['get', 'post'])
     def zip_files(self, request: HttpRequest, pk: str | None = None) -> Response:
