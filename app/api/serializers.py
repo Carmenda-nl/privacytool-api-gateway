@@ -42,6 +42,7 @@ class ConfigValuesSerializer(serializers.ModelSerializer):
     available_languages = serializers.SerializerMethodField(read_only=True)
     engine_selection = serializers.ChoiceField(choices=list(settings.ENGINES), allow_blank=True, required=False)
     available_engines = serializers.SerializerMethodField(read_only=True)
+    label_selection = serializers.ChoiceField(choices=['yes', 'no'], allow_blank=True, required=False)
     reusable_datakey = serializers.FileField(required=False, allow_null=True)
 
     def get_available_languages(self, obj: ConfigValues) -> list[dict[str, str]]:
@@ -93,6 +94,7 @@ class ConfigValuesSerializer(serializers.ModelSerializer):
             'available_languages',
             'engine_selection',
             'available_engines',
+            'label_selection',
             'reusable_datakey',
         )
 
