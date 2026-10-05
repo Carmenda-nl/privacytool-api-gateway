@@ -25,6 +25,7 @@ class ConfigValues(models.Model):
 
     language_selection = models.CharField(max_length=2, default='nl')
     engine_selection = models.CharField(blank=True, default='')
+    label_selection = models.CharField(blank=True, default='')
     reusable_datakey = models.FileField(upload_to=datakey_path, storage=datakey_storage, null=True, blank=True)
 
     def __str__(self) -> str:
