@@ -86,6 +86,11 @@ class ConfigValuesSerializer(serializers.ModelSerializer):
 
         return instance
 
+    def to_representation(self, instance: ConfigValues) -> dict:
+        """Return the config values, including the reusable datakey metadata."""
+        representation = super().to_representation(instance)
+        return get_metadata(representation, instance, ['reusable_datakey'])
+
     class Meta:
         model = ConfigValues
         fields = (

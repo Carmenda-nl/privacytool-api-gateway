@@ -17,6 +17,7 @@ from preprocessing.csv_handler import load_csv
 
 if TYPE_CHECKING:
     from django.core.files.uploadedfile import UploadedFile
+    from django.db.models import Model
 
     from api.models import DeidentificationJob
 
@@ -56,7 +57,7 @@ def sanitize_uploaded(job: DeidentificationJob, file_metadata: dict) -> None:
         load_csv(Path(field.path), properties)
 
 
-def get_metadata(represent: dict, instance: DeidentificationJob, fields: list[str]) -> dict:
+def get_metadata(represent: dict, instance: Model, fields: list[str]) -> dict:
     """Populate files with url, filesize and last_modified date."""
     for field in fields:
         file_url = represent.get(field)
