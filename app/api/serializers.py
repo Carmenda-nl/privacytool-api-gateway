@@ -56,23 +56,23 @@ class ConfigValuesSerializer(serializers.ModelSerializer):
             for engine_id, engine in settings.ENGINES.items()
         ]
 
-    def validate_reusable_datakey(self, value: UploadedFile | None) -> UploadedFile | ContentFile | None:
-        """Validate the reusable datakey file, then encrypt it before it is stored."""
-        if not value:
-            return value
-
-        result = validate_file(value, datakey='datakey')
-        file = result['file']
-
-        file.seek(0)
-        name = Path(cast('str', file.name)).with_suffix('.bin').name
-        return ContentFile(encrypt_bytes(file.read()), name=name)
+    def validate_reusable_datakey(self, value: UploadedFile | None) -> UploadedFile | None:
+        """Validate the reusable datakey file."""
+        if value:
+            validate_file(value, datakey='datakey')
+        return value
 
     def update(self, instance: ConfigValues, validated_data: dict) -> ConfigValues:
-        """Update config values, deleting the old datakey file when it is replaced or cleared."""
+        """Update config values, encrypting a new datakey and deleting the one it replaces or clears."""
         if 'reusable_datakey' in validated_data:
             old_datakey = instance.reusable_datakey
             new_datakey = validated_data['reusable_datakey']
+
+            if new_datakey:
+                new_datakey.seek(0)
+                name = Path(cast('str', new_datakey.name)).with_suffix('.bin').name
+                new_datakey = ContentFile(encrypt_bytes(new_datakey.read()), name=name)
+                validated_data['reusable_datakey'] = new_datakey
 
             if old_datakey and old_datakey.name and old_datakey != new_datakey:
                 old_datakey.storage.delete(old_datakey.name)

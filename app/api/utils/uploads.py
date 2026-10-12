@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 
 from django.conf import settings
 
+from api.utils.previews import file_metadata
 from preprocessing.csv_handler import load_csv
 
 if TYPE_CHECKING:
@@ -71,16 +72,5 @@ def get_metadata(represent: dict, instance: Model, fields: list[str]) -> dict:
                 file_size = int(file.st_size)
                 file_creation = int(getattr(file, 'st_birthtime', file.st_ctime))
 
-                if file_size >= 1 << 30:
-                    filesize = f'{file_size / (1 << 30):.2f} Gb'
-                elif file_size >= 1 << 20:
-                    filesize = f'{file_size / (1 << 20):.2f} Mb'
-                else:
-                    filesize = f'{file_size / 1024:.2f} Kb'
-
-                represent[field] = {
-                    'url': file_url,
-                    'filesize': filesize,
-                    'build_date': file_creation,
-                }
+                represent[field] = file_metadata(file_url, file_size, file_creation)
     return represent

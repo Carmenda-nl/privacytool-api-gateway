@@ -95,3 +95,19 @@ def generate_preview(job: DeidentificationJob) -> None:
 
     job.preview = preview_data
     job.save(update_fields=['preview'])
+
+
+def file_metadata(url: str | None, file_size: int, build_date: int) -> dict:
+    """Return the file url, human readable filesize and build date."""
+    if file_size >= 1 << 30:
+        filesize = f'{file_size / (1 << 30):.2f} Gb'
+    elif file_size >= 1 << 20:
+        filesize = f'{file_size / (1 << 20):.2f} Mb'
+    else:
+        filesize = f'{file_size / 1024:.2f} Kb'
+
+    return {
+        'url': url,
+        'filesize': filesize,
+        'build_date': build_date,
+    }
