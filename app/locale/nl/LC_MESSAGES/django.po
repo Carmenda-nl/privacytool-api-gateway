@@ -135,7 +135,7 @@ msgstr "bestand ingeladen"
 
 #: .\api\views\sse_views.py:38
 msgid "initializing model"
-msgstr "model initialiseren"
+msgstr "model initialiseren (dit kan enkele minuten duren)"
 
 #: .\api\views\sse_views.py:38
 msgid "initializing tables"
