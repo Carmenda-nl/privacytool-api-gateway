@@ -67,8 +67,6 @@ class DeidentificationJob(models.Model):
     datakey = models.FileField(upload_to=input_path, storage=overwrite_storage, null=True, blank=True, max_length=255)
     output_file = models.FileField(upload_to=output_path, null=True, blank=True, max_length=255)
     output_datakey = models.FileField(upload_to=output_path, null=True, blank=True, max_length=255)
-    data_permission = models.BooleanField(default=False)
-    consent_file = models.FileField(upload_to=output_path, null=True, blank=True, max_length=255)
     log_file = models.FileField(upload_to=output_path, null=True, blank=True, max_length=255)
     skipped_lines = models.FileField(upload_to=output_path, null=True, blank=True, max_length=255)
     zip_file = models.FileField(upload_to=output_path, null=True, blank=True, max_length=255)

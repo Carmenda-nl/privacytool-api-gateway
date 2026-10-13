@@ -3,7 +3,7 @@
 # This program is distributed under the terms of the PolyForm Noncommercial License 1.0.0          #
 # ------------------------------------------------------------------------------------------------ #
 
-"""Assemble a job's output: consent file, output collection, and zip packaging."""
+"""Assemble a job's output: output collection and zip packaging."""
 
 from __future__ import annotations
 
@@ -14,53 +14,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from django.conf import settings
-from django.utils.translation import gettext as _
 
 if TYPE_CHECKING:
     from api.models import DeidentificationJob
 
 logger = logging.getLogger('api-gateway')
-
-
-def generate_consent(job: DeidentificationJob) -> None:
-    """Create consent.txt and store its path on the job when data_permission is set."""
-    output_dir = Path(settings.MEDIA_ROOT) / 'output' / str(job.job_id)
-
-    if not output_dir.exists():
-        output_dir.mkdir(parents=True, exist_ok=True)
-
-    if not job.data_permission or not job.input_file:
-        job.consent_file.delete(save=False)
-        job.consent_file = None
-        job.save(update_fields=['consent_file'])
-        return
-
-    base_name = Path(getattr(job.input_file, 'name', '')).stem
-    consent_filename = f'{base_name}_consent.txt'
-    consent_path = output_dir / consent_filename
-
-    if not base_name:
-        job.consent_file.delete(save=False)
-        job.consent_file = None
-        job.save(update_fields=['consent_file'])
-        return
-
-    if job.consent_file:
-        old_name = getattr(job.consent_file, 'name', '')
-        old_consent_path = Path(settings.MEDIA_ROOT) / old_name if old_name else None
-        if old_consent_path and old_consent_path.exists() and old_consent_path != consent_path:
-            old_consent_path.unlink()
-
-    consent_path.write_text(
-        _(
-            'Yes, Carmenda may contact me with questions about improving the Privacytool.\n'
-            'Confirmed during pseudonimisation of the file: {filename}'
-        ).format(filename=base_name),
-        encoding='utf-8',
-    )
-
-    job.consent_file.name = str(Path('output') / str(job.job_id) / consent_filename)
-    job.save(update_fields=['consent_file'])
 
 
 def collect_output_files(job: DeidentificationJob) -> list[str]:

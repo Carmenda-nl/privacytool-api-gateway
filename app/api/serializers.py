@@ -142,7 +142,6 @@ class JobSerializer(serializers.ModelSerializer):
     )
     input_file = serializers.FileField(required=False)
     datakey = serializers.FileField(required=False)
-    data_permission = serializers.BooleanField(required=False, default=False)
     engine = serializers.ChoiceField(choices=list(settings.ENGINES), default=default_engine, initial=default_engine)
 
     def get_fields(self) -> dict:
@@ -162,7 +161,6 @@ class JobSerializer(serializers.ModelSerializer):
         read_only_fields: ClassVar = [
             'output_file',
             'output_datakey',
-            'consent_file',
             'log_file',
             'skipped_lines',
             'zip_file',

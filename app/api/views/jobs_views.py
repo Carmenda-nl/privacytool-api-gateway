@@ -28,7 +28,7 @@ from api.serializers import (
     ZipSerializer,
 )
 from api.services.job_runner import cancel_engine, submit_job, sync_status
-from api.utils.packaging import collect_output_files, create_zipfile, generate_consent
+from api.utils.packaging import collect_output_files, create_zipfile
 from api.utils.previews import generate_preview
 from api.utils.uploads import sanitize_uploaded
 from preprocessing.datakey import append_new_clientnames, find_new_clientnames, prepare_datakey
@@ -82,9 +82,6 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
         if job.input_cols:
             prepare_datakey(job)
 
-        if job.data_permission:
-            generate_consent(job)
-
         detail_serializer = JobSerializer(job, context={'request': request})
         return Response(detail_serializer.data, status=status.HTTP_201_CREATED)
 
@@ -100,11 +97,6 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
             generate_preview(job)
         if job.input_cols:
             prepare_datakey(job)
-        if input_uploaded and 'data_permission' not in request.data:
-            job.data_permission = False
-            job.save(update_fields=['data_permission'])
-        if job.data_permission:
-            generate_consent(job)
 
     def update(self, request: Request, *args: object, **kwargs: object) -> Response:
         """Update a job with PUT request, deleting or overwrite old files after adding new ones."""
@@ -115,7 +107,6 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
         old_columns = job.input_cols
         old_input = job.input_file.name if job.input_file else None
         old_datakey = job.datakey.name if job.datakey else None
-        old_permission = job.data_permission
 
         new_columns = data.get('input_cols')
         columns_changed = new_columns is not None and new_columns != old_columns
@@ -150,19 +141,7 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
 
         sanitize_uploaded(job, getattr(serializer, '_file_metadata', {}))
 
-        new_permission = serializer.validated_data.get('data_permission', False)
-        permission_changed = new_permission != old_permission
-
-        if permission_changed:
-            job.data_permission = new_permission
-            job.save(update_fields=['data_permission'])
-            job.reset_zip()
-            job.save(update_fields=['zip_file', 'zip_preview'])
-
         should_reset = input_uploaded or datakey_changed or columns_changed
-
-        if not should_reset and ('data_permission' in request.data or (not job.data_permission and job.consent_file)):
-            generate_consent(job)
 
         if should_reset:
             self._reset_job(request, job, input_uploaded=input_uploaded)

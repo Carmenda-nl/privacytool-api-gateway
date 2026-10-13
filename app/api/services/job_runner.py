@@ -15,7 +15,6 @@ import httpx
 from django.conf import settings
 
 from api.models import DeidentificationJob
-from api.utils.packaging import generate_consent
 
 logger = logging.getLogger('api-gateway')
 
@@ -113,9 +112,6 @@ def _apply_completion(job: DeidentificationJob, result: dict) -> None:
             save_fields.append(field_name)
     if save_fields:
         job.save(update_fields=save_fields)
-
-    if job.data_permission:
-        generate_consent(job)
 
     if DeidentificationJob.objects.filter(pk=job.pk, status='processing').update(status='completed'):
         job.status = 'completed'
