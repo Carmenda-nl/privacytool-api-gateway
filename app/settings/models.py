@@ -23,6 +23,7 @@ def datakey_path(_instance: ConfigValues, filename: str) -> str:
 class ConfigValues(models.Model):
     """Model to store config values for the application."""
 
+    first_boot = models.BooleanField(default=True)
     language_selection = models.CharField(max_length=2, default='nl')
     engine_selection = models.CharField(blank=True, default='')
     label_selection = models.CharField(blank=True, default='')

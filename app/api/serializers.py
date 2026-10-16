@@ -38,6 +38,7 @@ from settings.models import ConfigValues
 class ConfigValuesSerializer(serializers.ModelSerializer):
     """Serializer for the app settings persistent values."""
 
+    first_boot = serializers.BooleanField(required=True)
     language_selection = serializers.ChoiceField(choices=settings.LANGUAGES)
     available_languages = serializers.SerializerMethodField(read_only=True)
     engine_selection = serializers.ChoiceField(choices=list(settings.ENGINES), allow_blank=True, required=False)
@@ -95,6 +96,7 @@ class ConfigValuesSerializer(serializers.ModelSerializer):
         model = ConfigValues
         fields = (
             'id',
+            'first_boot',
             'language_selection',
             'available_languages',
             'engine_selection',
