@@ -78,15 +78,7 @@ def _validate_csv(file_path: str, datakey: str) -> FileValidationResult:
             message = _('File header is empty or invalid')
             raise serializers.ValidationError(message)
 
-        max_row_checks = 10
-        data_rows = []
-        for line in csv_file:
-            if line.strip():
-                data_rows.append(line)
-            if len(data_rows) >= max_row_checks:
-                break
-
-        if len(data_rows) < 1:
+        if not datakey and not any(line.strip() for line in csv_file):
             message = _('File must contain at least 1 data row.')
             raise serializers.ValidationError(message)
 
@@ -121,7 +113,7 @@ def validate_file(file: UploadedFile, datakey: str = '') -> FileValidationResult
     Checks that the file:
       - has an allowed extension.
       - if .csv has valid encoding and delimiter.
-      - has atleast 1 data row.
+      - has atleast 1 data row (not required for a datakey).
       - if the input columns have the specified columns.
       - if the datakey has the mandatory columns.
     """

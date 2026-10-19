@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Onboarding flasg [LVD-220]
+- Onboarding flag [LVD-220]
 
 ## [2.3.0-beta] - 2026-09-30
 

@@ -23,13 +23,14 @@ from django.utils.translation import ngettext as _ng
 from rest_framework import serializers
 
 from api.models import DeidentificationJob, default_engine, output_path
-from api.utils.uploads import get_metadata
+from api.utils.uploads import get_file_path, get_metadata
 from api.validators import (
     validate_file,
     validate_file_columns,
     validate_input_cols,
     validate_required_columns,
 )
+from preprocessing.csv_handler import load_csv
 from preprocessing.datakey import sync_datakey
 from preprocessing.encryption import decrypt_bytes, encrypt_bytes
 from settings.models import ConfigValues
@@ -60,7 +61,8 @@ class ConfigValuesSerializer(serializers.ModelSerializer):
     def validate_reusable_datakey(self, value: UploadedFile | None) -> UploadedFile | None:
         """Validate the reusable datakey file."""
         if value:
-            validate_file(value, datakey='datakey')
+            result = validate_file(value, datakey='datakey')
+            self._datakey_properties = {key: result[key] for key in ('header', 'encoding', 'delimiter')}
         return value
 
     def update(self, instance: ConfigValues, validated_data: dict) -> ConfigValues:
@@ -70,9 +72,18 @@ class ConfigValuesSerializer(serializers.ModelSerializer):
             new_datakey = validated_data['reusable_datakey']
 
             if new_datakey:
-                new_datakey.seek(0)
+                upload = get_file_path(new_datakey)
+                file_path = Path(upload[0])
+
+                try:
+                    load_csv(file_path, getattr(self, '_datakey_properties', None))
+                    content = file_path.read_bytes()
+                finally:
+                    if upload[1]:
+                        file_path.unlink(missing_ok=True)
+
                 name = Path(cast('str', new_datakey.name)).with_suffix('.bin').name
-                new_datakey = ContentFile(encrypt_bytes(new_datakey.read()), name=name)
+                new_datakey = ContentFile(encrypt_bytes(content), name=name)
                 validated_data['reusable_datakey'] = new_datakey
 
             if old_datakey and old_datakey.name and old_datakey != new_datakey:
