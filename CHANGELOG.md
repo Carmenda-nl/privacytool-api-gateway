@@ -3,6 +3,21 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.1-beta] - 2026-10-22
+
+### Added
+
+- Onboarding flasg [LVD-220]
+
+### Changed
+
+- Update readme [LVD-383]
+
+### Fixed
+
+- Normalize reusable datakey before encryption [LVD-376]
+- Dump traceback to stderr on native crashes
+
 ## [2.3.0-beta] - 2026-09-30
 
 ### Added
