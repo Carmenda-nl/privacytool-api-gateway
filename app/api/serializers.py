@@ -63,11 +63,17 @@ class ConfigValuesSerializer(serializers.ModelSerializer):
         """Validate the reusable datakey file."""
         if value:
             result = validate_file(value, datakey='datakey')
-            self._datakey_properties = {key: result[key] for key in ('header', 'encoding', 'delimiter')}
+            self._datakey_properties = {
+                'header': result.get('header'),
+                'encoding': result.get('encoding'),
+                'delimiter': result.get('delimiter'),
+            }
         return value
 
     def update(self, instance: ConfigValues, validated_data: dict) -> ConfigValues:
         """Update config values, encrypting a new datakey and deleting the one it replaces or clears."""
+        validated_data['first_settings'] = True
+
         if 'reusable_datakey' in validated_data:
             old_datakey = instance.reusable_datakey
             new_datakey = validated_data['reusable_datakey']
