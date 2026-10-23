@@ -24,6 +24,7 @@ class ConfigValues(models.Model):
     """Model to store config values for the application."""
 
     first_boot = models.BooleanField(default=True)
+    first_settings = models.BooleanField(default=False)
     language_selection = models.CharField(max_length=2, default='nl')
     engine_selection = models.CharField(blank=True, default='')
     label_selection = models.CharField(blank=True, default='')

@@ -40,6 +40,7 @@ class ConfigValuesSerializer(serializers.ModelSerializer):
     """Serializer for the app settings persistent values."""
 
     first_boot = serializers.BooleanField(required=True)
+    first_settings = serializers.BooleanField(read_only=True)
     language_selection = serializers.ChoiceField(choices=settings.LANGUAGES)
     available_languages = serializers.SerializerMethodField(read_only=True)
     engine_selection = serializers.ChoiceField(choices=list(settings.ENGINES), allow_blank=True, required=False)
@@ -108,6 +109,7 @@ class ConfigValuesSerializer(serializers.ModelSerializer):
         fields = (
             'id',
             'first_boot',
+            'first_settings',
             'language_selection',
             'available_languages',
             'engine_selection',
