@@ -138,14 +138,6 @@ msgid "initializing model"
 msgstr "model initialiseren (dit kan enkele minuten duren)"
 
 #: .\api\views\sse_views.py:38
-msgid "initializing tables"
-msgstr "tabellen initialiseren"
-
-#: .\api\views\sse_views.py:38
-msgid "initializing name detection"
-msgstr "naam detectie initialiseren"
-
-#: .\api\views\sse_views.py:38
 msgid "pseudonymize"
 msgstr "pseudonimiseren"
 
