@@ -13,6 +13,7 @@ from pathlib import Path
 
 import httpx
 from django.conf import settings
+from django.utils import timezone
 
 from api.models import DeidentificationJob
 
@@ -113,8 +114,12 @@ def _apply_completion(job: DeidentificationJob, result: dict) -> None:
     if save_fields:
         job.save(update_fields=save_fields)
 
-    if DeidentificationJob.objects.filter(pk=job.pk, status='processing').update(status='completed'):
+    completed_at = timezone.now()
+    if DeidentificationJob.objects.filter(pk=job.pk, status='processing').update(
+        status='completed', completed_at=completed_at
+    ):
         job.status = 'completed'
+        job.completed_at = completed_at
         logger.info('Job "%s" completed', job.job_id)
 
 

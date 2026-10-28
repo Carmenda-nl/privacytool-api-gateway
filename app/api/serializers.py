@@ -62,7 +62,11 @@ class ConfigValuesSerializer(serializers.ModelSerializer):
         """Validate the reusable datakey file."""
         if value:
             result = validate_file(value, datakey='datakey')
-            self._datakey_properties = {key: result[key] for key in ('header', 'encoding', 'delimiter')}
+            self._datakey_properties = {
+                'header': result['header'],
+                'encoding': result['encoding'],
+                'delimiter': result['delimiter'],
+            }
         return value
 
     def update(self, instance: ConfigValues, validated_data: dict) -> ConfigValues:
@@ -180,6 +184,8 @@ class JobSerializer(serializers.ModelSerializer):
             'preview',
             'processed_preview',
             'status',
+            'started_at',
+            'completed_at',
             'error_message',
         ]
 
@@ -303,7 +309,12 @@ class JobSerializer(serializers.ModelSerializer):
         processed = representation.get('processed_preview')
         if processed:
             metrics = processed.get('metrics', {})
-            hours, minutes, seconds = metrics.get('hours', 0), metrics.get('minutes', 0), metrics.get('seconds', 0)
+            total_seconds = 0
+
+            if instance.started_at and instance.completed_at:
+                total_seconds = round((instance.completed_at - instance.started_at).total_seconds())
+
+            hours, minutes, seconds = total_seconds // 3600, total_seconds % 3600 // 60, total_seconds % 60
 
             parts = []
 

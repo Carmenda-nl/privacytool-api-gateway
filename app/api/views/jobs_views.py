@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 
 import httpx
 from django.conf import settings
+from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -64,7 +65,7 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
             return DatakeySerializer
         if self.action == 'list':
             return JobListSerializer
-        if self.action in ['process', 'cancel']:
+        if self.action in ['process', 'cancel', 'start_timer']:
             return JobStatusSerializer
         if self.action == 'zip_files':
             return ZipSerializer
@@ -197,6 +198,14 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
             logger.exception('Failed to request cancellation for job: %s', job.job_id)
             return Response({'error': str(error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    @action(detail=True, methods=['post'], url_path='start-timer')
+    def start_timer(self, request: HttpRequest, pk: str | None = None) -> Response:
+        """Start measuring the processing time."""
+        job = self.get_object()
+        job.start_timer()
+
+        return Response({'job_id': str(job.job_id), 'started_at': job.started_at}, status=status.HTTP_200_OK)
+
     @action(detail=True, methods=['get', 'post'])
     def process(self, request: HttpRequest, pk: str | None = None) -> Response:
         """Start the deidentification process for a job."""
@@ -224,6 +233,10 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
                 {'message': 'Job is already processing'},
                 status=status.HTTP_409_CONFLICT,
             )
+
+        if job.started_at is None or job.completed_at is not None:
+            job.started_at = timezone.now()
+            job.completed_at = None
 
         job.status = 'processing'
         job.error_message = ''
