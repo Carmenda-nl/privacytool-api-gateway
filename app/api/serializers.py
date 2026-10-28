@@ -40,6 +40,7 @@ class ConfigValuesSerializer(serializers.ModelSerializer):
     """Serializer for the app settings persistent values."""
 
     first_boot = serializers.BooleanField(required=True)
+    first_settings = serializers.BooleanField(read_only=True)
     language_selection = serializers.ChoiceField(choices=settings.LANGUAGES)
     available_languages = serializers.SerializerMethodField(read_only=True)
     engine_selection = serializers.ChoiceField(choices=list(settings.ENGINES), allow_blank=True, required=False)
@@ -71,6 +72,8 @@ class ConfigValuesSerializer(serializers.ModelSerializer):
 
     def update(self, instance: ConfigValues, validated_data: dict) -> ConfigValues:
         """Update config values, encrypting a new datakey and deleting the one it replaces or clears."""
+        validated_data['first_settings'] = True
+
         if 'reusable_datakey' in validated_data:
             old_datakey = instance.reusable_datakey
             new_datakey = validated_data['reusable_datakey']
@@ -112,6 +115,7 @@ class ConfigValuesSerializer(serializers.ModelSerializer):
         fields = (
             'id',
             'first_boot',
+            'first_settings',
             'language_selection',
             'available_languages',
             'engine_selection',
