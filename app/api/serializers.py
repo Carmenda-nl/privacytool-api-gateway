@@ -7,7 +7,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, ClassVar, cast
 
 if TYPE_CHECKING:
     from django.core.files.uploadedfile import UploadedFile
@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 from pathlib import Path
 
 from django.conf import settings
+from django.core.files.base import ContentFile
 from django.db.models import FileField
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext as _
@@ -22,23 +23,30 @@ from django.utils.translation import ngettext as _ng
 from rest_framework import serializers
 
 from api.models import DeidentificationJob, default_engine, output_path
-from api.utils.uploads import get_metadata
+from api.utils.uploads import get_file_path, get_metadata
 from api.validators import (
     validate_file,
     validate_file_columns,
     validate_input_cols,
     validate_required_columns,
 )
+from preprocessing.csv_handler import load_csv
+from preprocessing.datakey import sync_datakey
+from preprocessing.encryption import decrypt_bytes, encrypt_bytes
 from settings.models import ConfigValues
 
 
 class ConfigValuesSerializer(serializers.ModelSerializer):
     """Serializer for the app settings persistent values."""
 
+    first_boot = serializers.BooleanField(required=True)
+    first_settings = serializers.BooleanField(read_only=True)
     language_selection = serializers.ChoiceField(choices=settings.LANGUAGES)
     available_languages = serializers.SerializerMethodField(read_only=True)
     engine_selection = serializers.ChoiceField(choices=list(settings.ENGINES), allow_blank=True, required=False)
     available_engines = serializers.SerializerMethodField(read_only=True)
+    label_selection = serializers.ChoiceField(choices=['yes', 'no'], allow_blank=True, required=False)
+    reusable_datakey = serializers.FileField(required=False, allow_null=True)
 
     def get_available_languages(self, obj: ConfigValues) -> list[dict[str, str]]:
         """Return the list of languages supported by the application."""
@@ -51,9 +59,70 @@ class ConfigValuesSerializer(serializers.ModelSerializer):
             for engine_id, engine in settings.ENGINES.items()
         ]
 
+    def validate_reusable_datakey(self, value: UploadedFile | None) -> UploadedFile | None:
+        """Validate the reusable datakey file."""
+        if value:
+            result = validate_file(value, datakey='datakey')
+            self._datakey_properties = {
+                'header': result['header'],
+                'encoding': result['encoding'],
+                'delimiter': result['delimiter'],
+            }
+        return value
+
+    def update(self, instance: ConfigValues, validated_data: dict) -> ConfigValues:
+        """Update config values, encrypting a new datakey and deleting the one it replaces or clears."""
+        validated_data['first_settings'] = True
+
+        if 'reusable_datakey' in validated_data:
+            old_datakey = instance.reusable_datakey
+            new_datakey = validated_data['reusable_datakey']
+
+            if new_datakey:
+                upload = get_file_path(new_datakey)
+                file_path = Path(upload[0])
+
+                try:
+                    load_csv(file_path, getattr(self, '_datakey_properties', None))
+                    content = file_path.read_bytes()
+                finally:
+                    if upload[1]:
+                        file_path.unlink(missing_ok=True)
+
+                name = Path(cast('str', new_datakey.name)).with_suffix('.bin').name
+                new_datakey = ContentFile(encrypt_bytes(content), name=name)
+                validated_data['reusable_datakey'] = new_datakey
+
+            if old_datakey and old_datakey.name and old_datakey != new_datakey:
+                old_datakey.storage.delete(old_datakey.name)
+
+        instance = super().update(instance, validated_data)
+
+        reusable_datakey = instance.reusable_datakey
+
+        if 'reusable_datakey' in validated_data and reusable_datakey:
+            sync_datakey(reusable_datakey)
+
+        return instance
+
+    def to_representation(self, instance: ConfigValues) -> dict:
+        """Return the config values, including the reusable datakey metadata."""
+        representation = super().to_representation(instance)
+        return get_metadata(representation, instance, ['reusable_datakey'])
+
     class Meta:
         model = ConfigValues
-        fields = ('id', 'language_selection', 'available_languages', 'engine_selection', 'available_engines')
+        fields = (
+            'id',
+            'first_boot',
+            'first_settings',
+            'language_selection',
+            'available_languages',
+            'engine_selection',
+            'available_engines',
+            'label_selection',
+            'reusable_datakey',
+        )
 
 
 class JobListSerializer(serializers.ModelSerializer):
@@ -94,8 +163,18 @@ class JobSerializer(serializers.ModelSerializer):
     )
     input_file = serializers.FileField(required=False)
     datakey = serializers.FileField(required=False)
-    data_permission = serializers.BooleanField(required=False, default=False)
     engine = serializers.ChoiceField(choices=list(settings.ENGINES), default=default_engine, initial=default_engine)
+
+    def get_fields(self) -> dict:
+        """Make the datakey field read-only when a reusable datakey is configured in settings."""
+        fields = super().get_fields()
+
+        config_values = ConfigValues.objects.first()
+        if config_values and config_values.reusable_datakey and 'datakey' in fields:
+            fields['datakey'].read_only = True
+            fields['datakey'].required = False
+
+        return fields
 
     class Meta:
         model = DeidentificationJob
@@ -103,13 +182,14 @@ class JobSerializer(serializers.ModelSerializer):
         read_only_fields: ClassVar = [
             'output_file',
             'output_datakey',
-            'consent_file',
             'log_file',
             'skipped_lines',
             'zip_file',
             'preview',
             'processed_preview',
             'status',
+            'started_at',
+            'completed_at',
             'error_message',
         ]
 
@@ -188,6 +268,20 @@ class JobSerializer(serializers.ModelSerializer):
             return result['file']
         return None
 
+    def create(self, validated_data: dict) -> DeidentificationJob:
+        """Create job, copying the reusable datakey when available."""
+        job = super().create(validated_data)
+
+        config_values = ConfigValues.objects.first()
+        reusable_datakey = config_values.reusable_datakey if config_values else None
+
+        if reusable_datakey:
+            with reusable_datakey.open('rb') as source:
+                filename = Path(cast('str', reusable_datakey.name)).with_suffix('.csv').name
+                job.datakey.save(filename, ContentFile(decrypt_bytes(source.read())), save=True)
+
+        return job
+
     def validate(self, attrs: dict) -> dict:
         """Require input_file on create and cross-validate input_cols against its columns."""
         if self.instance is None and not attrs.get('input_file'):
@@ -219,7 +313,12 @@ class JobSerializer(serializers.ModelSerializer):
         processed = representation.get('processed_preview')
         if processed:
             metrics = processed.get('metrics', {})
-            hours, minutes, seconds = metrics.get('hours', 0), metrics.get('minutes', 0), metrics.get('seconds', 0)
+            total_seconds = 0
+
+            if instance.started_at and instance.completed_at:
+                total_seconds = round((instance.completed_at - instance.started_at).total_seconds())
+
+            hours, minutes, seconds = total_seconds // 3600, total_seconds % 3600 // 60, total_seconds % 60
 
             parts = []
 
@@ -241,7 +340,11 @@ class JobSerializer(serializers.ModelSerializer):
                 },
             }
 
-        file_fields = [file.name for file in instance._meta.get_fields() if isinstance(file, FileField)]
+        file_fields = [
+            file.name
+            for file in instance._meta.get_fields()
+            if isinstance(file, FileField) and file.name in representation
+        ]
 
         return get_metadata(representation, instance, file_fields)
 
@@ -259,6 +362,13 @@ class JobStatusSerializer(serializers.ModelSerializer):
     def get_progress(self, obj: DeidentificationJob) -> int:
         """Coarse progress from the DB status; the live percentage comes from the engine."""
         return 100 if obj.status == 'completed' else 0
+
+
+class DatakeySerializer(serializers.Serializer):
+    """Report on new clientnames for the reusable datakey; takes no input."""
+
+    new_clients_found = serializers.IntegerField(read_only=True, required=False)
+    new_clients_added = serializers.IntegerField(read_only=True, required=False)
 
 
 class ZipSerializer(serializers.ModelSerializer):

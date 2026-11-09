@@ -15,21 +15,25 @@ from typing import TYPE_CHECKING
 
 import httpx
 from django.conf import settings
+from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from api.models import DeidentificationJob
 from api.serializers import (
+    DatakeySerializer,
     JobListSerializer,
     JobSerializer,
     JobStatusSerializer,
     ZipSerializer,
 )
 from api.services.job_runner import cancel_engine, submit_job, sync_status
-from api.utils.packaging import collect_output_files, create_zipfile, generate_consent
+from api.utils.packaging import collect_output_files, create_zipfile
 from api.utils.previews import generate_preview
 from api.utils.uploads import sanitize_uploaded
+from preprocessing.datakey import append_new_clientnames, find_new_clientnames, prepare_datakey
+from settings.models import ConfigValues
 
 if TYPE_CHECKING:
     from django.http import HttpRequest
@@ -45,11 +49,23 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
     serializer_class = JobSerializer
     http_method_names = ('get', 'post', 'put', 'delete')
 
-    def get_serializer_class(self) -> type[JobSerializer | JobListSerializer | JobStatusSerializer | ZipSerializer]:
+    def get_extra_action_url_map(self) -> dict[str, str]:
+        """Only offer option when a reusable datakey is set."""
+        action_urls = super().get_extra_action_url_map()
+
+        if not ConfigValues.objects.filter(reusable_datakey__gt='').exists():
+            action_urls.pop('Update reusable datakey', None)
+        return action_urls
+
+    def get_serializer_class(
+        self,
+    ) -> type[JobSerializer | JobListSerializer | JobStatusSerializer | ZipSerializer | DatakeySerializer]:
         """Return a serializer based on the current action."""
+        if self.action == 'update_datakey':
+            return DatakeySerializer
         if self.action == 'list':
             return JobListSerializer
-        if self.action in ['process', 'cancel']:
+        if self.action in ['process', 'cancel', 'start_timer']:
             return JobStatusSerializer
         if self.action == 'zip_files':
             return ZipSerializer
@@ -64,8 +80,8 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
         sanitize_uploaded(job, getattr(serializer, '_file_metadata', {}))
         generate_preview(job)
 
-        if job.data_permission:
-            generate_consent(job)
+        if job.input_cols:
+            prepare_datakey(job)
 
         detail_serializer = JobSerializer(job, context={'request': request})
         return Response(detail_serializer.data, status=status.HTTP_201_CREATED)
@@ -80,11 +96,8 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
 
         if input_uploaded:
             generate_preview(job)
-        if input_uploaded and 'data_permission' not in request.data:
-            job.data_permission = False
-            job.save(update_fields=['data_permission'])
-        if job.data_permission:
-            generate_consent(job)
+        if job.input_cols:
+            prepare_datakey(job)
 
     def update(self, request: Request, *args: object, **kwargs: object) -> Response:
         """Update a job with PUT request, deleting or overwrite old files after adding new ones."""
@@ -95,7 +108,6 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
         old_columns = job.input_cols
         old_input = job.input_file.name if job.input_file else None
         old_datakey = job.datakey.name if job.datakey else None
-        old_permission = job.data_permission
 
         new_columns = data.get('input_cols')
         columns_changed = new_columns is not None and new_columns != old_columns
@@ -104,7 +116,10 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
         input_uploaded = new_input is not None
         input_changed = input_uploaded and (not old_input or Path(old_input).name != new_input.name)
 
-        new_datakey = request.FILES.get('datakey')
+        config_values = ConfigValues.objects.first()
+        reusable_datakey = bool(config_values.reusable_datakey) if config_values else False
+
+        new_datakey = None if reusable_datakey else request.FILES.get('datakey')
         datakey_changed = new_datakey is not None
 
         if new_columns == old_columns and input_uploaded:
@@ -127,19 +142,7 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
 
         sanitize_uploaded(job, getattr(serializer, '_file_metadata', {}))
 
-        new_permission = serializer.validated_data.get('data_permission', False)
-        permission_changed = new_permission != old_permission
-
-        if permission_changed:
-            job.data_permission = new_permission
-            job.save(update_fields=['data_permission'])
-            job.reset_zip()
-            job.save(update_fields=['zip_file', 'zip_preview'])
-
         should_reset = input_uploaded or datakey_changed or columns_changed
-
-        if not should_reset and ('data_permission' in request.data or (not job.data_permission and job.consent_file)):
-            generate_consent(job)
 
         if should_reset:
             self._reset_job(request, job, input_uploaded=input_uploaded)
@@ -195,6 +198,14 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
             logger.exception('Failed to request cancellation for job: %s', job.job_id)
             return Response({'error': str(error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    @action(detail=True, methods=['post'], url_path='start-timer')
+    def start_timer(self, request: HttpRequest, pk: str | None = None) -> Response:
+        """Start measuring the processing time."""
+        job = self.get_object()
+        job.start_timer()
+
+        return Response({'job_id': str(job.job_id), 'started_at': job.started_at}, status=status.HTTP_200_OK)
+
     @action(detail=True, methods=['get', 'post'])
     def process(self, request: HttpRequest, pk: str | None = None) -> Response:
         """Start the deidentification process for a job."""
@@ -223,6 +234,10 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_409_CONFLICT,
             )
 
+        if job.started_at is None or job.completed_at is not None:
+            job.started_at = timezone.now()
+            job.completed_at = None
+
         job.status = 'processing'
         job.error_message = ''
         job.save()
@@ -231,6 +246,9 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
             input_cols = job.input_cols
             filename = Path(job.input_file.name).name
             input_file = f'{job.job_id}/{filename}'
+
+            # re-check if a reusable datakey is added or changed
+            prepare_datakey(job)
 
             datakey = Path(job.datakey.name).name if job.datakey else None
 
@@ -256,6 +274,17 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
                 {'error': 'Job processing failed', 'details': str(error)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+    @action(detail=True, methods=['get', 'post'])
+    def update_reusable_datakey(self, request: HttpRequest, pk: str | None = None) -> Response:
+        """Get or add clientnames missing from the reusable datakey."""
+        job = self.get_object()
+
+        if request.method == 'GET':
+            return Response({'new_clients_found': len(find_new_clientnames(job))}, status=status.HTTP_200_OK)
+
+        added = append_new_clientnames(job)
+        return Response({'new_clients_added': len(added)}, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['get', 'post'])
     def zip_files(self, request: HttpRequest, pk: str | None = None) -> Response:

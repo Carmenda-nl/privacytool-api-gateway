@@ -9,11 +9,17 @@ Launches uvicorn directly against the ASGI app,
 instead of going through Django's manage.py command dispatch.
 """
 
+import faulthandler
 import os
+import sys
 
 import uvicorn
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'main.settings')
+
+# Dump traceback to stderr on native crashes
+if sys.stderr is not None:
+    faulthandler.enable(all_threads=True)
 
 if __name__ == '__main__':
     from main.settings import HOST, PORT

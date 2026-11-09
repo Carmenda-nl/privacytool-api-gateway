@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 
 import environ
+from cryptography.fernet import Fernet
 from django.core.management.utils import get_random_secret_key
 from django.utils.translation import gettext_lazy as _
 
@@ -32,6 +33,7 @@ environ.Env.read_env(BASE_DIR / '.env')
 
 DEBUG = env('DEBUG')
 SECRET_KEY = env('SECRET_KEY', default=get_random_secret_key())
+ENCRYPTION_KEY = env('ENCRYPTION_KEY', default=Fernet.generate_key().decode())
 
 
 HOST = env('HOST')

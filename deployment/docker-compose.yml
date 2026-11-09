@@ -53,6 +53,7 @@ services:
       DEBUG: True
       LOG_LEVEL: INFO
       SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY in deployment/.env}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?set ENCRYPTION_KEY in deployment/.env}
       ENGINES: >-
         {"carmenda-deduce-engine": {"url": "http://carmenda-deduce-engine", "port": "8001",
         "m2m_hash": "${M2M_SECRET}"},

@@ -11,7 +11,7 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from api.views import APIRootView, DeidentificationJobViewSet, VersionView
-from api.views.root_views import ConfigValuesView
+from api.views.root_views import ConfigValuesView, DatakeyView
 from api.views.sse_views import progress
 
 router = DefaultRouter()
@@ -22,5 +22,6 @@ urlpatterns = [
     path('', include(router.urls)),
     path('v1/version/', VersionView.as_view(), name='version'),
     path('v2/settings/', ConfigValuesView.as_view(), name='settings'),
+    path('v2/settings/datakey/', DatakeyView.as_view(), name='settings-datakey'),
     path('v2/jobs/<str:job_id>/progress/', progress, name='progress'),
 ]

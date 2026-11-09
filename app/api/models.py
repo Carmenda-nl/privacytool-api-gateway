@@ -12,6 +12,7 @@ from pathlib import Path
 
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 from django.utils.text import get_valid_filename
 
 from main.storage import OverwriteStorage
@@ -67,8 +68,6 @@ class DeidentificationJob(models.Model):
     datakey = models.FileField(upload_to=input_path, storage=overwrite_storage, null=True, blank=True, max_length=255)
     output_file = models.FileField(upload_to=output_path, null=True, blank=True, max_length=255)
     output_datakey = models.FileField(upload_to=output_path, null=True, blank=True, max_length=255)
-    data_permission = models.BooleanField(default=False)
-    consent_file = models.FileField(upload_to=output_path, null=True, blank=True, max_length=255)
     log_file = models.FileField(upload_to=output_path, null=True, blank=True, max_length=255)
     skipped_lines = models.FileField(upload_to=output_path, null=True, blank=True, max_length=255)
     zip_file = models.FileField(upload_to=output_path, null=True, blank=True, max_length=255)
@@ -76,11 +75,19 @@ class DeidentificationJob(models.Model):
     preview = models.JSONField(null=True, blank=True)
     processed_preview = models.JSONField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    started_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
     error_message = models.TextField(default='', blank=True)
 
     def __str__(self) -> str:
         """Return a string representation of the deidentification job."""
         return f'Job {self.job_id} - {self.status}'
+
+    def start_timer(self) -> None:
+        """Start measuring the processing time."""
+        self.started_at = timezone.now()
+        self.completed_at = None
+        self.save(update_fields=['started_at', 'completed_at'])
 
     def reset_zip(self) -> None:
         """Delete the zip file and clear related fields."""
@@ -108,6 +115,8 @@ class DeidentificationJob(models.Model):
         self.processed_preview = None
         self.error_message = ''
         self.status = 'pending'
+        self.started_at = None
+        self.completed_at = None
 
-        update_fields += ['processed_preview', 'zip_preview', 'error_message', 'status']
+        update_fields += ['processed_preview', 'zip_preview', 'error_message', 'status', 'started_at', 'completed_at']
         self.save(update_fields=update_fields)

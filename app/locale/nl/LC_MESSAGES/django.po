@@ -52,11 +52,6 @@ msgstr[1] "%(count)d seconden"
 msgid "and"
 msgstr "en"
 
-#: .\api\utils\packaging.py:55
-#, python-brace-format
-msgid "Yes, Carmenda may contact me with questions about improving the Privacytool.\nConfirmed during pseudonimisation of the file: {filename}"
-msgstr "Ja, Carmenda mag mij benaderen met vragen over het verbeteren van de Privacytool.\nBevestigd tijdens de pseudonimisering van het bestand: {filename}"
-
 #: .\api\validators.py:32
 #, python-format
 msgid "Column \"%(col_value)s\" not found in input file, available columns: %(available)s"
@@ -140,15 +135,7 @@ msgstr "bestand ingeladen"
 
 #: .\api\views\sse_views.py:38
 msgid "initializing model"
-msgstr "model initialiseren"
-
-#: .\api\views\sse_views.py:38
-msgid "initializing tables"
-msgstr "tabellen initialiseren"
-
-#: .\api\views\sse_views.py:38
-msgid "initializing name detection"
-msgstr "naam detectie initialiseren"
+msgstr "model initialiseren (dit kan enkele minuten duren)"
 
 #: .\api\views\sse_views.py:38
 msgid "pseudonymize"

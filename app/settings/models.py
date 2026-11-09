@@ -5,15 +5,30 @@
 
 """Settings model for the Django project."""
 
+from pathlib import Path
+
 from django.core.exceptions import ValidationError
 from django.db import models
+
+from main.storage import OverwriteStorage
+
+datakey_storage = OverwriteStorage()
+
+
+def datakey_path(_instance: ConfigValues, filename: str) -> str:
+    """Generate the reusable datakey file path."""
+    return str(Path('key') / filename)
 
 
 class ConfigValues(models.Model):
     """Model to store config values for the application."""
 
+    first_boot = models.BooleanField(default=True)
+    first_settings = models.BooleanField(default=False)
     language_selection = models.CharField(max_length=2, default='nl')
     engine_selection = models.CharField(blank=True, default='')
+    label_selection = models.CharField(blank=True, default='')
+    reusable_datakey = models.FileField(upload_to=datakey_path, storage=datakey_storage, null=True, blank=True)
 
     def __str__(self) -> str:
         """Return a string representation of the config values."""

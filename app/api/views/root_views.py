@@ -7,15 +7,22 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import time
+from pathlib import Path
+from typing import TYPE_CHECKING, cast
 
 from django.conf import settings
+from django.http import Http404
+from django.utils.translation import gettext as _
 from rest_framework import generics
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.views import APIView
 
 from api.serializers import ConfigValuesSerializer
+from api.utils.previews import file_metadata
+from preprocessing.encryption import decrypt_bytes
 from settings.models import ConfigValues
 
 if TYPE_CHECKING:
@@ -70,3 +77,31 @@ class ConfigValuesView(generics.RetrieveUpdateAPIView):
             config_values = ConfigValues.objects.create()
 
         return config_values
+
+
+class DatakeyView(generics.GenericAPIView):
+    """Retrieve the stored reusable datakey, or validate a new one without storing it."""
+
+    serializer_class = ConfigValuesSerializer
+
+    def get(self, request: Request) -> Response:
+        """Return the decrypted reusable datakey content."""
+        config_values = ConfigValues.objects.first()
+        reusable_datakey = config_values.reusable_datakey if config_values else None
+
+        if not reusable_datakey:
+            raise Http404
+
+        with reusable_datakey.open('rb') as source:
+            return Response(decrypt_bytes(source.read()).decode('utf-8'))
+
+    def post(self, request: Request) -> Response:
+        """Return the metadata the datakey would get, or the validation errors."""
+        serializer = self.get_serializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+
+        if not serializer.validated_data.get('reusable_datakey'):
+            raise ValidationError({'reusable_datakey': [_('No file was submitted.')]})
+
+        file = serializer.validated_data['reusable_datakey']
+        return Response(file_metadata(Path(cast('str', file.name)).name, file.size, int(time.time())))
