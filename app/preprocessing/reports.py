@@ -20,21 +20,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger('api-gateway')
 
 
-def _number_word_boundaries(expr: pl.Expr) -> pl.Expr:
-    """Split digits from letters in any word that starts or ends with a number.
-
-    leading digits:   "3mg" -> "3 mg", "2.patient" -> "2. patient"
-    trailing digits:  "mg5" -> "mg 5", "mg5." -> "mg 5."
-    untouched:        single-letter units ("2x") and full-caps words ("COPD2", "3MG")
-    """
-    non_upper = r'[\p{L}--\p{Lu}]'
-    letters = rf'(?:[A-Za-z]{{2}}\S*{non_upper}|[a-z][A-Za-z]|[A-Za-z][a-z])'
-    leading = rf'(^|\s)(\d+\.?)({letters}\S*)'
-    trailing = rf'(\S*{non_upper}\S*[A-Za-z]{{2}}|\S*[a-z][A-Za-z]|\S*[A-Za-z][a-z])(\d+\.?)(\s|$)'
-
-    return expr.str.replace_all(leading, '$1$2 $3').str.replace_all(trailing, '$1 $2$3')
-
-
 def _split_icpc(expr: pl.Expr) -> pl.Expr:
     """Insert " | " between leading ICPC code(s) and the text after it ("K86Hypertension" -> "K86 | Hypertension").
 
@@ -49,6 +34,21 @@ def _split_icpc(expr: pl.Expr) -> pl.Expr:
     needs_separator = (rest != '') & ~rest.str.starts_with(' ') & ~rest.str.starts_with('|')
 
     return pl.when(needs_separator).then(pl.concat_str(code, pl.lit(' | '), rest)).otherwise(expr)
+
+
+def _number_word_boundaries(expr: pl.Expr) -> pl.Expr:
+    """Split digits from letters in any word that starts or ends with a number.
+
+    leading digits:   "3mg" -> "3 mg", "2.patient" -> "2. patient"
+    trailing digits:  "mg5" -> "mg 5", "mg5." -> "mg 5."
+    untouched:        single-letter units ("2x") and full-caps words ("COPD2", "3MG")
+    """
+    non_upper = r'[\p{L}--\p{Lu}]'
+    letters = rf'(?:[A-Za-z]{{2}}\S*{non_upper}|[a-z][A-Za-z]|[A-Za-z][a-z])'
+    leading = rf'(^|\s)(\d+\.?)({letters}\S*)'
+    trailing = rf'(\S*{non_upper}\S*[A-Za-z]{{2}}|\S*[a-z][A-Za-z]|\S*[A-Za-z][a-z])(\d+\.?)(\s|$)'
+
+    return expr.str.replace_all(leading, '$1$2 $3').str.replace_all(trailing, '$1 $2$3')
 
 
 def _lowercase_tlds(expr: pl.Expr) -> pl.Expr:
@@ -78,11 +78,7 @@ def prepare_input(job: DeidentificationJob) -> None:
 
     # run functions in native polars
     df = df.with_columns(
-        pl.col(col)
-        .cast(pl.String)
-        .pipe(_number_word_boundaries)
-        .pipe(_split_icpc)
-        .pipe(_lowercase_tlds)
+        pl.col(col).cast(pl.String).pipe(_split_icpc).pipe(_number_word_boundaries).pipe(_lowercase_tlds)
         for col in report_cols
     )
 
