@@ -90,7 +90,7 @@ def generate_preview(job: DeidentificationJob) -> None:
 
     if file_extension == '.csv':
         preview_data = _csv_preview(file_path)
-    elif file_extension in {'.xlsx', '.xls'}:
+    elif file_extension == '.xlsx':
         preview_data = _excel_preview(file_path)
 
     job.preview = preview_data

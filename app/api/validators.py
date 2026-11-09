@@ -128,7 +128,7 @@ def validate_file(file: UploadedFile, datakey: str = '') -> FileValidationResult
     try:
         if input_extension == '.csv':
             result = _validate_csv(file_path, datakey)
-        elif input_extension in ('.xls', '.xlsx'):
+        elif input_extension == '.xlsx':
             result = _validate_excel(file_path)
         else:
             message = _('Unsupported file extension.')
@@ -152,7 +152,7 @@ def validate_file_columns(input_cols: str, file: UploadedFile | str) -> None:
         extension = Path(file.name or '').suffix.lower()
 
     try:
-        if extension in ('.xls', '.xlsx'):
+        if extension == '.xlsx':
             df = read_excel(resolved_path).load_sheet(0, n_rows=0).to_polars()
             columns = [str(col) for col in df.columns]
         elif extension == '.csv':
