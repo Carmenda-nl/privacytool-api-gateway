@@ -3,54 +3,40 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.3.2] - 2026-11-03
+## [2.3.2] - 2026-11-09
 
 ### Added
 
 - Time measuring in the gateway
 - Settings for the first time loaded state
+- Onboarding flag [LVD-220]
+- Reusable datakey field & logic
+- Reusable datakey encryption
+- Reusable datakey to readme
+- Reusable datakey to docker-compose
+- Datakey build & control on gateway [LVD-325]
+- Endpoints for updating a reusable datakey
+- Label selection in settings
+- Api returns reusable datakey with meta
+- Reusable datakey endpoints & improved logic
 
 ### Changed
 
 - Uv update packages
-
-## [2.3.1-beta] - 2026-10-22
-
-### Added
-
-- Onboarding flag [LVD-220]
-
-### Changed
-
 - Update readme [LVD-383]
+- Hide datakey input when reusable is set
+- Replace datakey with reusable when set during job
+- Endpoint to update reusable datakey [LVD-352]
+- Option only when reusable datakey is set
+- Remove data-permission checkbox [LVD-358]
+- Model init translation
 
 ### Fixed
 
 - Normalize reusable datakey before encryption [LVD-376]
 - Dump traceback to stderr on native crashes
-
-## [2.3.0-beta] - 2026-09-30
-
-### Added
-
-- Reusable datakey field & logic
-- Reusable datakey encryption
-- Reusable datakey to readme
-- Reusable datakey to docker-compose
-- Datakey build & control  on gateway [LVD-325]
-- Endpoints for updating a reusable datakey
-
-### Changed
-
-- Hide datakey input when reusable is set
-- Replace datakey with reusable when set during job
-- Endpoint to update reusable datakey [LVD-352]
-- Option only when  reusable datakey is set
-
-### Fixed
-
 - Reusable key not removed when replaced
-- Key not replaced or  copied when reusable
+- Key not replaced or copied when reusable
 - .csv -> .bin
 
 ## [2.2.0] - 2026-09-11
