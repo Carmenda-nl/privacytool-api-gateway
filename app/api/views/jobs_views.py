@@ -33,7 +33,6 @@ from api.utils.packaging import collect_output_files, create_zipfile
 from api.utils.previews import generate_preview
 from api.utils.uploads import delete_files, sanitize_uploaded
 from preprocessing.datakey import append_new_clientnames, find_new_clientnames, prepare_datakey
-from preprocessing.reports import prepare_input
 from settings.models import ConfigValues
 
 if TYPE_CHECKING:
@@ -140,7 +139,7 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
             job.datakey = new_datakey
             job.save(update_fields=['datakey'])
 
-        sanitize_uploaded(job, getattr(serializer, '_file_metadata', {}))
+        sanitize_uploaded(job, getattr(serializer, '_file_metadata', {}), columns_changed=columns_changed)
 
         should_reset = input_uploaded or datakey_changed or columns_changed
 
@@ -250,8 +249,6 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
             # re-check if a reusable datakey is added or changed
             prepare_datakey(job)
             datakey = Path(job.datakey.name).name if job.datakey else None
-
-            prepare_input(job)
 
             # send to selected engine
             submit_job(job, input_file, input_cols, datakey)

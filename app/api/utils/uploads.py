@@ -15,6 +15,7 @@ from django.conf import settings
 
 from api.utils.previews import file_metadata
 from preprocessing.csv_handler import load_csv
+from preprocessing.reports import prepare_input
 
 if TYPE_CHECKING:
     from django.core.files.storage import Storage
@@ -36,8 +37,8 @@ def get_file_path(uploaded_file: UploadedFile) -> tuple[str, bool]:
         return temp_file.name, True
 
 
-def sanitize_uploaded(job: DeidentificationJob, file_metadata: dict) -> None:
-    """Convert uploaded CSV input/datakey.
+def sanitize_uploaded(job: DeidentificationJob, file_metadata: dict, *, columns_changed: bool = False) -> None:
+    """Convert uploaded input/datakey, preprocess the report columns.
 
     Reuses the encoding/delimiter/header detected during validation
     (`file_metadata` from the serializer) so the file is read once.
@@ -57,6 +58,18 @@ def sanitize_uploaded(job: DeidentificationJob, file_metadata: dict) -> None:
             'delimiter': metadata['delimiter'],
         }
         load_csv(Path(field.path), properties)
+
+    if not job.input_file:
+        return
+
+    input_uploaded = 'input_file' in file_metadata
+
+    if input_uploaded:
+        input_path = Path(job.input_file.path)
+        input_path.with_name(f'{input_path.stem}_original{input_path.suffix}').unlink(missing_ok=True)
+
+    if job.input_cols and (input_uploaded or columns_changed):
+        prepare_input(job)
 
 
 def get_metadata(represent: dict, instance: Model, fields: list[str]) -> dict:
