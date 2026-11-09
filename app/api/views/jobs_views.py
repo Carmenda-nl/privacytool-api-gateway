@@ -31,8 +31,9 @@ from api.serializers import (
 from api.services.job_runner import cancel_engine, submit_job, sync_status
 from api.utils.packaging import collect_output_files, create_zipfile
 from api.utils.previews import generate_preview
-from api.utils.uploads import sanitize_uploaded
+from api.utils.uploads import delete_files, sanitize_uploaded
 from preprocessing.datakey import append_new_clientnames, find_new_clientnames, prepare_datakey
+from preprocessing.reports import prepare_input
 from settings.models import ConfigValues
 
 if TYPE_CHECKING:
@@ -131,9 +132,7 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
         job = serializer.save()
 
         if input_changed and old_input and job.input_file.name != old_input:
-            job.input_file.storage.delete(old_input)
-            old_path = Path(old_input)
-            job.input_file.storage.delete(str(old_path.with_name(f'{old_path.stem}_skipped_lines.csv')))
+            delete_files(job.input_file.storage, old_input)
 
         if (datakey_changed or input_uploaded) and old_datakey:
             job.datakey.storage.delete(old_datakey)
@@ -249,9 +248,11 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
 
             # re-check if a reusable datakey is added or changed
             prepare_datakey(job)
-
             datakey = Path(job.datakey.name).name if job.datakey else None
 
+            prepare_input(job)
+
+            # send to selected engine
             submit_job(job, input_file, input_cols, datakey)
             progress_url = request.build_absolute_uri(f'/api/v2/jobs/{job.job_id}/progress/')
             return Response(

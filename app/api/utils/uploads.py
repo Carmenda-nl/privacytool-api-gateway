@@ -17,6 +17,7 @@ from api.utils.previews import file_metadata
 from preprocessing.csv_handler import load_csv
 
 if TYPE_CHECKING:
+    from django.core.files.storage import Storage
     from django.core.files.uploadedfile import UploadedFile
     from django.db.models import Model
 
@@ -74,3 +75,15 @@ def get_metadata(represent: dict, instance: Model, fields: list[str]) -> dict:
 
                 represent[field] = file_metadata(file_url, file_size, file_creation)
     return represent
+
+
+def delete_files(storage: Storage, name: str) -> None:
+    """Delete an input file together with the files derived from it."""
+    path = Path(name)
+
+    for files in (
+        path,
+        path.with_name(f'{path.stem}_skipped_lines.csv'),
+        path.with_name(f'{path.stem}_original{path.suffix}'),
+    ):
+        storage.delete(str(files))
