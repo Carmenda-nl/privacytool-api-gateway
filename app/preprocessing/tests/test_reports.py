@@ -11,8 +11,8 @@ from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
 import polars as pl
-
 import pytest
+
 from preprocessing.reports import _lowercase_tlds, _number_word_boundaries, _split_icpc, prepare_input
 
 if TYPE_CHECKING:

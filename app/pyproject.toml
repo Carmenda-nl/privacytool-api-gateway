@@ -61,6 +61,9 @@ ignore = [
     'PLC0415' # (Lazy load imports)
 ]
 
+[tool.ruff.lint.isort]
+known-third-party = ['pytest']
+
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
