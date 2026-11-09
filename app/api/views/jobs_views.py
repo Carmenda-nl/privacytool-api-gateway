@@ -51,8 +51,9 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
     http_method_names = ('get', 'post', 'put', 'delete')
 
     def get_extra_action_url_map(self) -> dict[str, str]:
-        """Only offer option when a reusable datakey is set."""
+        """Hide internal actions and only offer the datakey option when a reusable datakey is set."""
         action_urls = super().get_extra_action_url_map()
+        action_urls.pop('Start timer', None)
 
         if not ConfigValues.objects.filter(reusable_datakey__gt='').exists():
             action_urls.pop('Update reusable datakey', None)
