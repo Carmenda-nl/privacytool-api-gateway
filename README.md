@@ -70,7 +70,7 @@ On upload it is validated and normalized (encoding, delimiter, header) and then 
 The gateway runs alongside multiple engines, each built from a local checkout as a sibling directory
 next to this repository. Compose builds and runs all services, wires them together over an
 internal network, and shares the data directory between them (the gateway forwards jobs to the
-engines by absolute path, so all three mount the same volume).
+engines by absolute path, so all services mount the same volume).
 
 ### Configure environment variables
 
@@ -182,7 +182,7 @@ CSRF_TRUSTED_ORIGINS=http://127.0.0.1
 
 ENCRYPTION_KEY=your-fernet-key-here
 
-ENGINES={"carmenda-deduce-engine": {"url": "http://127.0.0.1", "port": "8001", "m2m_hash": "unsecure_1"}, "deidentify-engine": {"url": "http://127.0.0.1", "port": "8002", "m2m_hash": "unsecure_2"}}
+ENGINES={"carmenda-deduce-engine": {"url": "http://127.0.0.1", "port": "8001", "m2m_hash": "unsecure_1"}, "deidentify-engine": {"url": "http://127.0.0.1", "port": "8002", "m2m_hash": "unsecure_2"}, "rtc-deduce-engine": {"url": "http://127.0.0.1", "port": "8003", "m2m_hash": "unsecure_3"}}
 ```
 
 > **Note:** Replace `your-secret-key-here` with a secure random string. For production environments, 

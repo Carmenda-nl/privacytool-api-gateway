@@ -44,6 +44,25 @@ services:
     mem_reservation: 2g
     restart: unless-stopped
 
+  rtc-deduce-engine:
+    container_name: rtc-deduce-engine
+    build:
+      context: ../../rtc-deduce-engine
+      dockerfile: deployment/Dockerfile
+    environment:
+      PORT: 8003
+      DEBUG: False
+      LOG_LEVEL: INFO
+      M2M_HASH: ${M2M_SECRET:?set M2M_SECRET in deployment/.env}
+    volumes:
+      - data:/app/data
+    expose:
+      - 8003
+    tty: true
+    mem_limit: 6g
+    mem_reservation: 2g
+    restart: unless-stopped
+
   gateway:
     container_name: api-gateway
     build:
@@ -58,6 +77,8 @@ services:
         {"carmenda-deduce-engine": {"url": "http://carmenda-deduce-engine", "port": "8001",
         "m2m_hash": "${M2M_SECRET}"},
         "deidentify-engine": {"url": "http://deidentify-engine", "port": "8002",
+        "m2m_hash": "${M2M_SECRET}"},
+        "rtc-deduce-engine": {"url": "http://rtc-deduce-engine", "port": "8003",
         "m2m_hash": "${M2M_SECRET}"}}
     ports:
       - 8000:8000
@@ -66,6 +87,7 @@ services:
     depends_on:
       - carmenda-deduce-engine
       - deidentify-engine
+      - rtc-deduce-engine
     mem_limit: 1g
     restart: unless-stopped
 
