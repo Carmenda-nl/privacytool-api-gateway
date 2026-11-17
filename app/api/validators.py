@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING, TypedDict
@@ -16,10 +17,14 @@ if TYPE_CHECKING:
 
 from django.utils.translation import gettext as _
 from fastexcel import read_excel
+from pypdf import PasswordType, PdfReader
+from pypdf.errors import PdfReadError
 from rest_framework import serializers
 
 from api.utils.uploads import get_file_path
 from preprocessing.csv_handler import detect_csv_properties, strip_bom
+
+logger = logging.getLogger('api-gateway')
 
 
 def validate_required_columns(columns: list[str], input_cols: str) -> None:
@@ -107,6 +112,25 @@ def _validate_excel(file_path: str) -> FileValidationResult:
     return {'file_type': 'excel'}
 
 
+def _validate_pdf(file_path: str) -> FileValidationResult:
+    """Validate a PDF file: readable, not password protected and containing a text layer."""
+    try:
+        reader = PdfReader(file_path)
+    except PdfReadError as error:
+        message = _('PDF file could not be read.')
+        raise serializers.ValidationError(message) from error
+
+    if reader.is_encrypted and reader.decrypt('') == PasswordType.NOT_DECRYPTED:
+        message = _('PDF file is password protected.')
+        raise serializers.ValidationError(message)
+
+    if not any((page.extract_text() or '').strip() for page in reader.pages):
+        message = _('PDF file contains no text layer (scanned documents are not supported).')
+        raise serializers.ValidationError(message)
+
+    return {'file_type': 'pdf'}
+
+
 def validate_file(file: UploadedFile, datakey: str = '') -> FileValidationResult:
     """Validate uploaded file and return file with metadata.
 
@@ -130,6 +154,8 @@ def validate_file(file: UploadedFile, datakey: str = '') -> FileValidationResult
             result = _validate_csv(file_path, datakey)
         elif input_extension == '.xlsx':
             result = _validate_excel(file_path)
+        elif input_extension == '.pdf':
+            result = _validate_pdf(file_path)
         else:
             message = _('Unsupported file extension.')
             raise serializers.ValidationError(message)
@@ -162,6 +188,9 @@ def validate_file_columns(input_cols: str, file: UploadedFile | str) -> None:
             with Path(resolved_path).open(encoding=encoding, errors='ignore') as csv_file:
                 header = strip_bom(csv_file.readline().strip())
                 columns = [strip_bom(col.strip()) for col in header.split(delimiter)]
+        elif extension == '.pdf':
+            logger.info('PDF has no columns to validate, these are set when converted.')
+            return
         else:
             message = _('Unsupported file extension.')
             raise serializers.ValidationError(message)
