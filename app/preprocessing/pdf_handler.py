@@ -3,13 +3,32 @@
 # This program is distributed under the terms of the PolyForm Noncommercial License 1.0.0          #
 # ------------------------------------------------------------------------------------------------ #
 
-"""PDF file conversion and sanitization utilities."""
+"""Convert an uploaded PDF into a single-cell CSV for the generic-label pipeline."""
 
+from typing import TYPE_CHECKING
+
+import polars as pl
 from pypdf import PdfReader
 
-reader = PdfReader('report.pdf')
-print(len(reader.pages))  # noqa: T201
+if TYPE_CHECKING:
+    from pathlib import Path
 
-page = reader.pages[0]
 
-print(page.extract_text())  # noqa: T201
+def _extract_report(pdf_path: Path) -> str:
+    """Return the text of all non-empty pages, separated by blank lines."""
+    reader = PdfReader(pdf_path)
+    pages = ((page.extract_text() or '').strip() for page in reader.pages)
+
+    return '\n\n'.join(page for page in pages if page)
+
+
+def load_pdf(pdf_path: Path) -> dict[str, str]:
+    """Write the PDF text as one row in a .csv with properties."""
+    properties = {'header': 'pdf_text', 'encoding': 'utf-8', 'delimiter': ','}
+
+    df = pl.DataFrame({properties['header']: [_extract_report(pdf_path)]})
+    df.write_csv(pdf_path.with_suffix('.csv'), separator=properties['delimiter'])
+
+    pdf_path.unlink()
+
+    return properties

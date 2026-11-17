@@ -90,6 +90,18 @@ msgstr "Datakey moet een CSV-bestand zijn."
 msgid "Unsupported file extension."
 msgstr "Niet-ondersteunde bestandsextensie."
 
+#: .\api\validators.py:118
+msgid "PDF file could not be read."
+msgstr "PDF-bestand kon niet worden gelezen."
+
+#: .\api\validators.py:122
+msgid "PDF file is password protected."
+msgstr "PDF-bestand is beveiligd met een wachtwoord."
+
+#: .\api\validators.py:126
+msgid "PDF file contains no text layer (scanned documents are not supported)."
+msgstr "PDF-bestand bevat geen tekstlaag (gescande documenten worden niet ondersteund)."
+
 #: .\api\validators.py:187
 msgid "Input columns must be a string"
 msgstr "Invoerkolommen moeten een tekstreeks zijn"
