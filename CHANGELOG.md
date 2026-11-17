@@ -3,6 +3,28 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0-beta] - 2026-11-17
+
+### Added
+
+- Dublicate input files or delete when not needed
+- Install xlsxwriter to preprocess excel files
+- Refactored rtc preprocessing
+- Preprocessing unit tests
+- Third engine option to readme & compose
+- Install pypdf
+- Pdf support & conversion
+
+### Changed
+
+- Remove `set_timer` from drf interface
+- Remove old xls support
+
+### Fixed
+
+- Correct order of preprocessing
+- Lint keeps failing on pytest folder
+
 ## [2.3.2] - 2026-11-09
 
 ### Added
