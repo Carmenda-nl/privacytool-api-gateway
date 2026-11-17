@@ -103,8 +103,7 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
     def update(self, request: Request, *args: object, **kwargs: object) -> Response:
         """Update a job with PUT request, deleting or overwrite old files after adding new ones."""
         job = self.get_object()
-        data = request.POST.copy()
-        data.update(request.FILES)
+        data: dict[str, object] = {**request.POST.dict(), **request.FILES.dict()}
 
         old_columns = job.input_cols
         old_input = job.input_file.name if job.input_file else None
@@ -115,7 +114,7 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
 
         new_input = request.FILES.get('input_file')
         input_uploaded = new_input is not None
-        input_changed = input_uploaded and (not old_input or Path(old_input).name != new_input.name)
+        input_changed = new_input is not None and (not old_input or Path(old_input).name != new_input.name)
 
         config_values = ConfigValues.objects.first()
         reusable_datakey = bool(config_values.reusable_datakey) if config_values else False
