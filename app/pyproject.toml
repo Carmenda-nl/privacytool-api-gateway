@@ -25,13 +25,13 @@ build = [
 ]
 
 dev = [
-    "django-stubs>=5.2.9",
-    "djangorestframework-stubs>=3.16.8",
-    "mypy>=1.19.1",
+    "django-types>=0.24.0",
+    "djangorestframework-types>=0.9.0",
     "pytest>=9.0.2",
     "pytest-cov>=7.0.0",
     "pytest-django>=4.11.1",
     "ruff>=0.15.0",
+    "ty>=0.0.107",
 ]
 
 [tool.uv]
@@ -72,19 +72,6 @@ inline-quotes = 'single'
 
 [tool.ruff.format]
 quote-style = 'single'
-
-[tool.mypy]
-plugins = [
-    'mypy_django_plugin.main',
-    'mypy_drf_plugin.main',
-]
-
-[[tool.mypy.overrides]]
-module = 'environ'
-ignore_missing_imports = true
-
-[tool.django-stubs]
-django_settings_module = 'main.settings'
 
 [tool.coverage.run]
 data_file = 'pytest/.coverage'

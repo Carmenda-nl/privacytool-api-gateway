@@ -20,7 +20,7 @@ help:
 	@echo   make lint             Run ruff lint checks
 	@echo   make format           Format code with ruff
 	@echo   make test             Run the test suite
-	@echo   make typecheck        Run mypy type checks
+	@echo   make typecheck        Run ty type checks
 	@echo   make check            Run all checks
 	@echo   make compose          Build and start the docker compose stack
 
@@ -40,7 +40,7 @@ test:
 	cd $(APP_DIR) && uv run pytest
 
 typecheck:
-	cd $(APP_DIR) && uv run mypy .
+	cd $(APP_DIR) && uv run ty check .
 
 check: format lint typecheck test
 
