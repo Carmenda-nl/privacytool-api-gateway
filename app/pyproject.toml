@@ -77,6 +77,12 @@ quote-style = 'single'
 [tool.ty.rules]
 incompatible-attribute-override = 'ignore' # (False positives on DRF's nested `class Meta:`)
 
+[[tool.ty.overrides]]
+include = ['api/views/jobs_views.py']
+
+[tool.ty.overrides.rules]
+no-matching-overload = 'ignore' # (Django stubs only allow str values in a QueryDict, not uploaded files)
+
 [tool.coverage.run]
 data_file = 'pytest/.coverage'
 
