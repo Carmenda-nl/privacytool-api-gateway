@@ -12,7 +12,13 @@ import polars as pl
 import pytest
 
 from api.models import DeidentificationJob
-from preprocessing.reports import _lowercase_tlds, _number_word_boundaries, _split_icpc, prepare_input
+from preprocessing.reports import (
+    _lowercase_tlds,
+    _number_word_boundaries,
+    _pad_pipes,
+    _split_icpc,
+    prepare_input,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -118,6 +124,44 @@ class TestSplitIcpc:
     def test_untouched(self, input_text: str) -> None:
         """Text without a leading code, or already separated, stays as-is."""
         assert _apply(_split_icpc, input_text) == input_text
+
+
+# ---------------------------------- PAD PIPES TESTS --------------------------------- #
+
+
+class TestPadPipes:
+    """Tests for padding pipes with spaces."""
+
+    @pytest.mark.parametrize(
+        ('input_text', 'expected'),
+        [
+            ('a|b', 'a | b'),
+            ('a |b', 'a | b'),
+            ('a| b', 'a | b'),
+            ('a||b', 'a || b'),
+            ('|a|', '| a |'),
+            ('a|b|c', 'a | b | c'),
+        ],
+    )
+    def test_pads(self, input_text: str, expected: str) -> None:
+        """A space is added on each side of a pipe where missing."""
+        assert _apply(_pad_pipes, input_text) == expected
+
+    @pytest.mark.parametrize('input_text', ['a | b', 'K86 | Hypertensie', '|', 'geen pipe', ''])
+    def test_untouched(self, input_text: str) -> None:
+        """Already padded pipes and text without pipes stay as-is."""
+        assert _apply(_pad_pipes, input_text) == input_text
+
+    @pytest.mark.parametrize(
+        ('input_text', 'expected'),
+        [
+            ('K86Hypertensie|Diabetes', 'K86 | Hypertensie | Diabetes'),
+            ('K86|Hypertensie', 'K86 | Hypertensie'),
+        ],
+    )
+    def test_after_split_icpc(self, input_text: str, expected: str) -> None:
+        """Padding after the ICPC split does not double the inserted separator."""
+        assert _apply(lambda expr: _pad_pipes(_split_icpc(expr)), input_text) == expected
 
 
 # ------------------------------- LOWERCASE TLD TESTS -------------------------------- #

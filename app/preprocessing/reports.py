@@ -34,6 +34,15 @@ def _split_icpc(expr: pl.Expr) -> pl.Expr:
     return pl.when(needs_separator).then(pl.concat_str(code, pl.lit(' | '), rest)).otherwise(expr)
 
 
+def _pad_pipes(expr: pl.Expr) -> pl.Expr:
+    """Ensure a space before and after every pipe ("a|b" -> "a | b").
+
+    consecutive pipes:  kept together ("a||b" -> "a || b")
+    untouched:          pipes already surrounded by spaces, such as the " | " inserted by `_split_icpc`
+    """
+    return expr.str.replace_all(r'([^\s|])\|', '$1 |').str.replace_all(r'\|([^\s|])', '| $1')
+
+
 def _number_word_boundaries(expr: pl.Expr) -> pl.Expr:
     """Split digits from letters in any word that starts or ends with a number.
 
@@ -76,7 +85,12 @@ def prepare_input(job: DeidentificationJob) -> None:
 
     # run functions in native polars
     df = df.with_columns(
-        pl.col(col).cast(pl.String).pipe(_split_icpc).pipe(_number_word_boundaries).pipe(_lowercase_tlds)
+        pl.col(col)
+        .cast(pl.String)
+        .pipe(_split_icpc)
+        .pipe(_pad_pipes)
+        .pipe(_number_word_boundaries)
+        .pipe(_lowercase_tlds)
         for col in report_cols
     )
 
