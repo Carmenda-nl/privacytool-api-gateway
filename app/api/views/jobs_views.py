@@ -104,7 +104,8 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
     def update(self, request: Request, *args: object, **kwargs: object) -> Response:
         """Update a job with PUT request, deleting or overwrite old files after adding new ones."""
         job = self.get_object()
-        data: dict[str, object] = {**request.POST.dict(), **request.FILES.dict()}
+        data = request.POST.copy()
+        data.update(request.FILES)  # Keep a QueryDict: DRF only treats empty form values ('') as "not submitted"
 
         old_columns = job.input_cols
         old_input = job.input_file.name if job.input_file else None
