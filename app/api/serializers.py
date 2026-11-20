@@ -5,9 +5,7 @@
 
 """Serializers for API-Gateway endpoints."""
 
-from __future__ import annotations
-
-from typing import TYPE_CHECKING, ClassVar, cast
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from django.core.files.uploadedfile import UploadedFile
@@ -89,7 +87,7 @@ class ConfigValuesSerializer(serializers.ModelSerializer):
                     if upload[1]:
                         file_path.unlink(missing_ok=True)
 
-                name = Path(cast('str', new_datakey.name)).with_suffix('.bin').name
+                name = Path(new_datakey.name).with_suffix('.bin').name
                 new_datakey = ContentFile(encrypt_bytes(content), name=name)
                 validated_data['reusable_datakey'] = new_datakey
 
@@ -133,8 +131,8 @@ class JobListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DeidentificationJob
-        fields: ClassVar = ['job_id', 'details_url', 'has_datakey', 'status']
-        read_only_fields: ClassVar = ['job_id', 'status']
+        fields = ('job_id', 'details_url', 'has_datakey', 'status')
+        read_only_fields = ('job_id', 'status')
 
     def get_details_url(self, obj: DeidentificationJob) -> str:
         """URL for the job details and processing information."""
@@ -178,8 +176,8 @@ class JobSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DeidentificationJob
-        exclude: ClassVar = ['zip_preview']
-        read_only_fields: ClassVar = [
+        exclude = ('zip_preview',)
+        read_only_fields = (
             'output_file',
             'output_datakey',
             'log_file',
@@ -191,7 +189,7 @@ class JobSerializer(serializers.ModelSerializer):
             'started_at',
             'completed_at',
             'error_message',
-        ]
+        )
 
     def validate_input_cols(self, value: str) -> str:
         """Validate input_cols on proper `key=value` format."""
@@ -277,7 +275,7 @@ class JobSerializer(serializers.ModelSerializer):
 
         if reusable_datakey:
             with reusable_datakey.open('rb') as source:
-                filename = Path(cast('str', reusable_datakey.name)).with_suffix('.csv').name
+                filename = Path(reusable_datakey.name).with_suffix('.csv').name
                 job.datakey.save(filename, ContentFile(decrypt_bytes(source.read())), save=True)
 
         return job
@@ -356,8 +354,8 @@ class JobStatusSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DeidentificationJob
-        fields: ClassVar = ['job_id', 'status', 'progress', 'error_message']
-        read_only_fields: ClassVar = ['job_id', 'status', 'progress', 'error_message']
+        fields = ('job_id', 'status', 'progress', 'error_message')
+        read_only_fields = ('job_id', 'status', 'progress', 'error_message')
 
     def get_progress(self, obj: DeidentificationJob) -> int:
         """Coarse progress from the DB status; the live percentage comes from the engine."""
@@ -374,20 +372,20 @@ class DatakeySerializer(serializers.Serializer):
 class ZipSerializer(serializers.ModelSerializer):
     """Package the output files of a completed job into a zipfile."""
 
-    output_fields: ClassVar[list[str]] = [
+    output_fields = tuple(
         field.name
         for field in DeidentificationJob._meta.get_fields()
         if isinstance(field, FileField)
         and field.upload_to is output_path
         and field.name not in ('zip_file', 'output_datakey')
-    ]
+    )
 
     zipfile = serializers.SerializerMethodField()
 
     class Meta:
         model = DeidentificationJob
-        fields: ClassVar = ['job_id', 'zipfile']
-        read_only_fields: ClassVar = ['job_id', 'zipfile']
+        fields = ('job_id', 'zipfile')
+        read_only_fields = ('job_id', 'zipfile')
 
     def get_fields(self) -> dict:
         """Add output FileFields to generates their URLs."""

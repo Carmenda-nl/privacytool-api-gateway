@@ -5,8 +5,6 @@
 
 """ViewSet for managing deidentification jobs."""
 
-from __future__ import annotations
-
 import gc
 import logging
 import shutil
@@ -36,6 +34,9 @@ from preprocessing.datakey import append_new_clientnames, find_new_clientnames, 
 from settings.models import ConfigValues
 
 if TYPE_CHECKING:
+    from collections import OrderedDict
+    from collections.abc import Sequence
+
     from django.http import HttpRequest
     from rest_framework.request import Request
 
@@ -47,9 +48,9 @@ class DeidentificationJobViewSet(viewsets.ModelViewSet):
 
     queryset = DeidentificationJob.objects.all()
     serializer_class = JobSerializer
-    http_method_names = ('get', 'post', 'put', 'delete')
+    http_method_names: Sequence[str] = ('get', 'post', 'put', 'delete')
 
-    def get_extra_action_url_map(self) -> dict[str, str]:
+    def get_extra_action_url_map(self) -> OrderedDict[str, str]:
         """Hide internal actions and only offer the datakey option when a reusable datakey is set."""
         action_urls = super().get_extra_action_url_map()
         action_urls.pop('Start timer', None)

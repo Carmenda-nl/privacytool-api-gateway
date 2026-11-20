@@ -5,8 +5,6 @@
 
 """Server-Sent Events view for real-time job progress updates."""
 
-from __future__ import annotations
-
 import json
 from typing import TYPE_CHECKING
 
@@ -103,7 +101,7 @@ async def progress(request: HttpRequest, job_id: str) -> StreamingHttpResponse:
     language = getattr(request, 'LANGUAGE_CODE', translation.get_language())
     job = await DeidentificationJob.objects.aget(pk=job_id)
 
-    async def event_stream() -> AsyncGenerator[str]:
+    async def event_stream() -> AsyncGenerator[bytes]:
         translation.activate(language)
 
         # Phase 1: relay the engine's live progress.
@@ -112,11 +110,11 @@ async def progress(request: HttpRequest, job_id: str) -> StreamingHttpResponse:
             async for live in _relay_stream(client, job.engine, str(job_id)):
                 if live is None:  # engine reached a terminal state
                     break
-                yield _json_format(percentage=live[0], stage=live[1], status='processing')
+                yield _json_format(percentage=live[0], stage=live[1], status='processing').encode()
 
         # Phase 2: report the status (the stream does not finalise the job in the db)
         async for message in _finalize(job_id):
-            yield message
+            yield message.encode()
 
     response = StreamingHttpResponse(event_stream(), content_type='text/event-stream')
     response['Cache-Control'] = 'no-cache'

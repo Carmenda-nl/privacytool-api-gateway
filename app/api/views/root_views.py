@@ -5,8 +5,6 @@
 
 """API root view with documentation links, Version control and Settings config values."""
 
-from __future__ import annotations
-
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
@@ -26,6 +24,8 @@ from preprocessing.encryption import decrypt_bytes
 from settings.models import ConfigValues
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from rest_framework.request import Request
 
 
@@ -67,7 +67,7 @@ class ConfigValuesView(generics.RetrieveUpdateAPIView):
     """Retrieve and update the application config values."""
 
     serializer_class = ConfigValuesSerializer
-    http_method_names = ('get', 'put', 'patch', 'head', 'options')
+    http_method_names: Sequence[str] = ('get', 'put', 'patch', 'head', 'options')
 
     def get_object(self) -> ConfigValues:
         """Return the config values instance, creating it if missing."""

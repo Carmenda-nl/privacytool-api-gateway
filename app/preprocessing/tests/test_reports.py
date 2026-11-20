@@ -5,21 +5,18 @@
 
 """Tests for report column preprocessing."""
 
-from __future__ import annotations
-
-from types import SimpleNamespace
 from typing import TYPE_CHECKING
+from unittest.mock import Mock
 
 import polars as pl
 import pytest
 
+from api.models import DeidentificationJob
 from preprocessing.reports import _lowercase_tlds, _number_word_boundaries, _split_icpc, prepare_input
 
 if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
-
-    from api.models import DeidentificationJob
 
 
 def _apply(fn: Callable[[pl.Expr], pl.Expr], text: str | None) -> str | None:
@@ -30,11 +27,11 @@ def _apply(fn: Callable[[pl.Expr], pl.Expr], text: str | None) -> str | None:
 
 def _make_job(input_path: Path, input_cols: str) -> DeidentificationJob:
     """Minimal stand-in for a job, with only the attributes `prepare_input` reads."""
-    return SimpleNamespace(  # type: ignore[return-value]
-        job_id='test-job',
-        input_file=SimpleNamespace(path=str(input_path)),
-        input_cols=input_cols,
-    )
+    job = Mock(spec=DeidentificationJob)
+    job.job_id = 'test-job'
+    job.input_file.path = str(input_path)
+    job.input_cols = input_cols
+    return job
 
 
 # ---------------------------- NUMBER WORD BOUNDARY TESTS ---------------------------- #

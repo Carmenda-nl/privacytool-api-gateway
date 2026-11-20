@@ -5,8 +5,6 @@
 
 """CSV file conversion and sanitization utilities."""
 
-from __future__ import annotations
-
 import contextlib
 import csv
 import html
