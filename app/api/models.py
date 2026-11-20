@@ -5,8 +5,6 @@
 
 """API models for keeping track of the deidentification process."""
 
-from __future__ import annotations
-
 import uuid
 from pathlib import Path
 
@@ -93,7 +91,6 @@ class DeidentificationJob(models.Model):
         """Delete the zip file and clear related fields."""
         if self.zip_file:
             self.zip_file.delete(save=False)
-            self.zip_file = None
 
         self.zip_preview = None
 

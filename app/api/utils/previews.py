@@ -5,8 +5,6 @@
 
 """Generate row previews (first & last rows) from a job's CSV or Excel input file."""
 
-from __future__ import annotations
-
 import csv
 import html
 from collections import deque

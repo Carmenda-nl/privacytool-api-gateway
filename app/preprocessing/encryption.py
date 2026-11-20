@@ -5,8 +5,6 @@
 
 """Symmetric encryption for data stored at data."""
 
-from __future__ import annotations
-
 from functools import lru_cache
 
 from cryptography.fernet import Fernet

@@ -5,13 +5,13 @@
 
 """File utilities for handling job uploads in the API gateway."""
 
-from __future__ import annotations
-
+import sys
 import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from django.conf import settings
+from django.core.files.uploadedfile import TemporaryUploadedFile
 
 from api.utils.previews import file_metadata
 from preprocessing.csv_handler import load_csv
@@ -19,6 +19,8 @@ from preprocessing.pdf_handler import load_pdf
 from preprocessing.reports import prepare_input
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from django.core.files.storage import Storage
     from django.core.files.uploadedfile import UploadedFile
     from django.db.models import Model
@@ -28,7 +30,7 @@ if TYPE_CHECKING:
 
 def get_file_path(uploaded_file: UploadedFile) -> tuple[str, bool]:
     """Get file path from uploaded file, creating temporary file if needed."""
-    if hasattr(uploaded_file, 'temporary_file_path'):
+    if isinstance(uploaded_file, TemporaryUploadedFile):
         return uploaded_file.temporary_file_path(), False
 
     with tempfile.NamedTemporaryFile(delete=False) as temp_file:
@@ -81,7 +83,7 @@ def sanitize_uploaded(job: DeidentificationJob, file_metadata: dict, *, columns_
         prepare_input(job)
 
 
-def get_metadata(represent: dict, instance: Model, fields: list[str]) -> dict:
+def get_metadata(represent: dict, instance: Model, fields: Iterable[str]) -> dict:
     """Populate files with url, filesize and last_modified date."""
     for field in fields:
         file_url = represent.get(field)
@@ -93,7 +95,7 @@ def get_metadata(represent: dict, instance: Model, fields: list[str]) -> dict:
             if file_path.exists():
                 file = file_path.stat()
                 file_size = int(file.st_size)
-                file_creation = int(getattr(file, 'st_birthtime', file.st_ctime))
+                file_creation = int(file.st_birthtime if sys.platform in ('win32', 'darwin') else file.st_ctime)
 
                 represent[field] = file_metadata(file_url, file_size, file_creation)
     return represent

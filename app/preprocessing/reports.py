@@ -5,8 +5,6 @@
 
 """Text preprocessing of report columns, applied to the input file before it is sent to an engine."""
 
-from __future__ import annotations
-
 import logging
 import shutil
 from pathlib import Path

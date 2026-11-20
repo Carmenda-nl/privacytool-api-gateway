@@ -5,8 +5,6 @@
 
 """Assemble a job's output: output collection and zip packaging."""
 
-from __future__ import annotations
-
 import logging
 import os
 import zipfile

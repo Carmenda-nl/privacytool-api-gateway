@@ -5,14 +5,12 @@
 
 """Build a ready-made datakey for an engine to be used."""
 
-from __future__ import annotations
-
 import io
 import logging
 import secrets
 import string
 from pathlib import Path
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 import polars as pl
 from django.core.files.base import ContentFile
@@ -156,14 +154,14 @@ def prepare_datakey(job: DeidentificationJob) -> str | None:
     datakey_df = _add_clientcodes(merged).sort('clientname')
 
     old_datakey = job.datakey.name if job.datakey else None
-    filename = f'{Path(cast("str", job.input_file.name)).stem}_key.csv'
+    filename = f'{Path(job.input_file.name).stem}_key.csv'
     job.datakey.save(filename, ContentFile(save_datakey(datakey_df)), save=True)
 
     if old_datakey and old_datakey != job.datakey.name:
         job.datakey.storage.delete(old_datakey)
 
     logger.debug('Job "%s": datakey built/refreshed as "%s"', job.job_id, job.datakey.name)
-    return Path(cast('str', job.datakey.name)).name
+    return Path(job.datakey.name).name
 
 
 def find_new_clientnames(job: DeidentificationJob) -> list[str]:
@@ -187,11 +185,11 @@ def find_new_clientnames(job: DeidentificationJob) -> list[str]:
 
 def sync_datakey(reusable_datakey: FieldFile) -> None:
     """Copy the (encrypted) reusable datakey into every pending job's own datakey."""
-    filename = Path(cast('str', reusable_datakey.name)).with_suffix('.csv').name
+    filename = Path(reusable_datakey.name).with_suffix('.csv').name
 
     for job in DeidentificationJob.objects.filter(status=DeidentificationJob.Status.PENDING):
         if job.datakey:
-            job.datakey.storage.delete(cast('str', job.datakey.name))
+            job.datakey.storage.delete(job.datakey.name)
 
         with reusable_datakey.open('rb') as source:
             job.datakey.save(filename, ContentFile(decrypt_bytes(source.read())), save=True)
@@ -213,7 +211,7 @@ def append_new_clientnames(job: DeidentificationJob) -> list[str]:
     merged = _check_datakey(existing, pl.Series(new_names))
     datakey_df = _add_clientcodes(merged).sort('clientname')
 
-    old_name = cast('str', reusable_datakey.name)
+    old_name = reusable_datakey.name
     filename = Path(old_name).name
     reusable_datakey.storage.delete(old_name)
     reusable_datakey.save(filename, ContentFile(encrypt_bytes(save_datakey(datakey_df))), save=True)

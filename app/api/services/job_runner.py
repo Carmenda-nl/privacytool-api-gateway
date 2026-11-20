@@ -5,8 +5,6 @@
 
 """Engine job submission and reconciliation for deidentification jobs."""
 
-from __future__ import annotations
-
 import logging
 import shutil
 from pathlib import Path

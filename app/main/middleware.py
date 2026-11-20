@@ -5,8 +5,6 @@
 
 """Middleware to serve media files in a Django application."""
 
-from __future__ import annotations
-
 import asyncio
 import mimetypes
 from inspect import markcoroutinefunction
@@ -20,7 +18,8 @@ from django.utils.translation import gettext as _
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Awaitable, Callable
 
-    from django.http import HttpRequest, HttpResponseBase
+    from django.http import HttpRequest
+    from django.http.response import HttpResponseBase
 
 
 async def _aiter_file(file_obj: IO[bytes]) -> AsyncIterator[bytes]:
@@ -63,11 +62,8 @@ class ServeMediaFilesMiddleware:
             # Checks if the file exists and is readable
             if file_path.exists() and file_path.is_file():
                 try:
-                    file_obj = await asyncio.to_thread(file_path.open, 'rb')
-                    content_type, _encoding = mimetypes.guess_type(str(file_path))
-
-                    if content_type is None:
-                        content_type = 'application/octet-stream'
+                    file_obj = await asyncio.to_thread(lambda: file_path.open('rb'))
+                    content_type = mimetypes.guess_type(file_path)[0] or 'application/octet-stream'
 
                     # Streams the file as response
                     response = StreamingHttpResponse(_aiter_file(file_obj), content_type=content_type)
@@ -76,7 +72,7 @@ class ServeMediaFilesMiddleware:
                     if 'download' in request.GET:
                         response['Content-Disposition'] = f'attachment; filename="{file_path.name}"'
 
-                except OSError, PermissionError:
+                except OSError:
                     # File can not be opened
                     return HttpResponseNotFound(_('Can not open the file: {path}').format(path=relative_path))
                 else:

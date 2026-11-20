@@ -74,6 +74,9 @@ inline-quotes = 'single'
 [tool.ruff.format]
 quote-style = 'single'
 
+[tool.ty.rules]
+incompatible-attribute-override = 'ignore' # (False positives on DRF's nested `class Meta:`)
+
 [tool.coverage.run]
 data_file = 'pytest/.coverage'
 
