@@ -15,7 +15,7 @@ from django.core.files.uploadedfile import TemporaryUploadedFile
 
 from api.utils.previews import file_metadata
 from preprocessing.csv_handler import load_csv
-from preprocessing.pdf_handler import load_pdf
+from preprocessing.doc_handler import convert_document
 from preprocessing.reports import prepare_input
 
 if TYPE_CHECKING:
@@ -53,8 +53,8 @@ def sanitize_uploaded(job: DeidentificationJob, file_metadata: dict, *, columns_
         if not metadata or not field:
             continue
 
-        if metadata.get('file_type') == 'pdf':
-            properties = load_pdf(Path(field.path))
+        if metadata.get('file_type') in {'pdf', 'docx'}:
+            properties = convert_document(Path(field.path))
             field.name = str(Path(field.name).with_suffix('.csv'))
             job.input_cols = f'report={properties["header"]}'
             job.save(update_fields=[field_name, 'input_cols'])

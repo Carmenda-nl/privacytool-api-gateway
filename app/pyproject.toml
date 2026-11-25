@@ -10,6 +10,7 @@ dependencies = [
     "django-cors-headers>=4.9.0",
     "django-environ>=0.13.0",
     "djangorestframework>=3.17.1",
+    "docx2txt>=0.9",
     "fastexcel>=0.20.2",
     "httpx>=0.28.1",
     "polars>=1.42.0",
